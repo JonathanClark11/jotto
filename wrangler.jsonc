@@ -1,0 +1,6 @@
+{
+  "name": "jotto",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-01-01",
+  "account_id": "1d4c314a24109bbdc74dd28ff3740cda"
+}
