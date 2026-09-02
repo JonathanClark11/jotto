@@ -1,0 +1,23 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# build
+.next/
+dist/
+build/
+
+# wrangler / cloudflare
+.wrangler/
+.dev.vars
+
+# env
+.env
+.env.local
+.env*.local
+
+# misc
+.DS_Store
+*.zip
+source/

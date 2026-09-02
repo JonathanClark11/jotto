@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1786954109345,
+      "tag": "0000_tiny_grey_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1786988490837,
+      "tag": "0001_late_morlun",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787222643776,
+      "tag": "0002_tiresome_the_renegades",
+      "breakpoints": true
+    }
+  ]
+}
