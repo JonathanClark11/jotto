@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
+// Change APP_NAME in src/config.js when the final name is chosen.
+const APP_NAME = "Jortal";
+
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host =
@@ -14,18 +17,17 @@ export async function generateMetadata(): Promise<Metadata> {
   const imageUrl = `${protocol}://${host}/og-jortal.png`;
 
   return {
-    title: "Jortal — Five-Letter Word Guessing Game",
-    description:
-      "Play Jortal in Daily, Solo, or turn-based Rival mode, track your stats, and challenge friends.",
+    title: `${APP_NAME} — Five-Letter Word Guessing Game`,
+    description: `Play ${APP_NAME} in Daily, Solo, or turn-based Rival mode, track your stats, and challenge friends.`,
     openGraph: {
-      title: "Jortal — Crack the Five-Letter Word",
-      description: "Challenge a friend, compare results, and climb your Jortal stats.",
-      images: [{ url: imageUrl, width: 1536, height: 1024, alt: "Jortal word game" }],
+      title: `${APP_NAME} — Crack the Five-Letter Word`,
+      description: `Challenge a friend, compare results, and climb your ${APP_NAME} stats.`,
+      images: [{ url: imageUrl, width: 1536, height: 1024, alt: `${APP_NAME} word game` }],
     },
     twitter: {
       card: "summary_large_image",
-      title: "Jortal — Crack the Five-Letter Word",
-      description: "Challenge a friend, compare results, and climb your Jortal stats.",
+      title: `${APP_NAME} — Crack the Five-Letter Word`,
+      description: `Challenge a friend, compare results, and climb your ${APP_NAME} stats.`,
       images: [imageUrl],
     },
   };

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory } from './logic.js';
+import { APP_NAME } from '../config.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
 const GUESS_SET = new Set(GUESS_WORDS);
@@ -90,7 +91,7 @@ function savedState(next) {
 async function jsonRequest(url, options) {
   const response = await fetch(url, options);
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Jortal could not complete that request');
+  if (!response.ok) throw new Error(data.error || `${APP_NAME} could not complete that request`);
   return data;
 }
 
@@ -517,10 +518,10 @@ export function useJotto() {
     if (!current.result) return;
     const result = current.result;
     let summary = '';
-    if (result.daily) summary = `I solved today's Jortal in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else if (current.mode === 'solo') summary = `I cracked Jortal in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else if (result.won) summary = `I beat ${current.opponentName || 'a friend'} at Jortal in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else summary = `${current.opponentName || 'My friend'} won our Jortal match — rematch?`;
+    if (result.daily) summary = `I solved today's ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
+    else if (current.mode === 'solo') summary = `I cracked ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
+    else if (result.won) summary = `I beat ${current.opponentName || 'a friend'} at ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
+    else summary = `${current.opponentName || 'My friend'} won our ${APP_NAME} match — rematch?`;
     const stats = current.playerStats;
     const statsLine = stats?.gamesPlayed
       ? `My Rival stats: ${stats.gamesPlayed} games · ${stats.winRate}% wins · ${stats.averageGuesses ?? '–'} avg guesses.`
@@ -529,7 +530,7 @@ export function useJotto() {
     const url = `${window.location.origin}${window.location.pathname}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'My Jortal result', text, url });
+        await navigator.share({ title: `My ${APP_NAME} result`, text, url });
         set({ shareFeedback: 'SHARED' });
       } else {
         await navigator.clipboard.writeText(`${text}\n${url}`);

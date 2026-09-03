@@ -20,7 +20,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const body = await request.json().catch(() => ({}));
   const token = typeof body.token === "string" ? body.token : "";
   const word = normalizeWord(body.word);
-  if (!isGuessWord(word)) return errorResponse("That word is not in Jortal's dictionary");
+  if (!isGuessWord(word)) return errorResponse("That word is not in the dictionary");
 
   const match = await getMatch(db, code);
   if (!match) return errorResponse("Match not found", 404);
