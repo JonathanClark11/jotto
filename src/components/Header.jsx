@@ -7,7 +7,7 @@ export function Header({ showBack, onHome, headerLabel }) {
             &#8249;
           </button>
         )}
-        <div className="logo">JORTAL</div>
+        <div className="logo">CINQ</div>
       </div>
       <div className="header-label">{headerLabel}</div>
     </div>
