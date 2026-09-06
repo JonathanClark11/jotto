@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" fill="#1C1B18"/>
+
+  <!-- Five letter tiles arranged in a cross/die-5 pattern -->
+  <!-- Top-left -->
+  <rect x="148" y="148" width="280" height="280" rx="40" fill="#F1EFE9"/>
+  <!-- Top-right -->
+  <rect x="596" y="148" width="280" height="280" rx="40" fill="#F1EFE9"/>
+  <!-- Center -->
+  <rect x="372" y="372" width="280" height="280" rx="40" fill="#0E7C86"/>
+  <!-- Bottom-left -->
+  <rect x="148" y="596" width="280" height="280" rx="40" fill="#F1EFE9"/>
+  <!-- Bottom-right -->
+  <rect x="596" y="596" width="280" height="280" rx="40" fill="#F1EFE9"/>
+
+  <!-- Letters C I N Q (center tile is blank / accent) -->
+  <text x="288" y="330" text-anchor="middle" font-family="Georgia, serif" font-size="160" font-weight="700" fill="#1C1B18">C</text>
+  <text x="736" y="330" text-anchor="middle" font-family="Georgia, serif" font-size="160" font-weight="700" fill="#1C1B18">I</text>
+  <text x="288" y="778" text-anchor="middle" font-family="Georgia, serif" font-size="160" font-weight="700" fill="#1C1B18">N</text>
+  <text x="736" y="778" text-anchor="middle" font-family="Georgia, serif" font-size="160" font-weight="700" fill="#1C1B18">Q</text>
+
+  <!-- Center tile: number 5 in teal -->
+  <text x="512" y="534" text-anchor="middle" dominant-baseline="middle" font-family="Georgia, serif" font-size="180" font-weight="700" fill="#fff">5</text>
+</svg>
