@@ -1,4 +1,4 @@
-// Core Jortal game rules — pure functions, no React/DOM here.
+// Core Cinq game rules — pure functions, no React/DOM here.
 
 export function shared(a, b) {
   let n = 0;

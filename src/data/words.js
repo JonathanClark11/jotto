@@ -1,4 +1,4 @@
-// Jortal dictionary — 5-letter words with no repeated letters (isograms).
+// Cinq dictionary — 5-letter words with no repeated letters (isograms).
 export const WORDS = [
 "ABIDE","ABODE","ABORT","ABOUT","ABOVE","ACORN","ACRID","ACTOR","ACUTE","ADEPT",
 "ADMIT","ADOBE","ADOPT","ADORE","ADORN","ADULT","AFTER","AGENT","AGILE","AGLOW",

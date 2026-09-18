@@ -1,4 +1,4 @@
-# Jotto (Jortal)
+# Cinq
 
 Count-based word guessing game by Colin. App Store deployment via Capacitor.
 
