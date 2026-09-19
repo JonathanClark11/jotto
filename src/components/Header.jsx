@@ -1,4 +1,4 @@
-export function Header({ showBack, onHome, headerLabel }) {
+export function Header({ showBack, onHome, headerLabel, showStatsBtn, onStats }) {
   return (
     <div className="header-row">
       <div className="header-left">
@@ -9,7 +9,10 @@ export function Header({ showBack, onHome, headerLabel }) {
         )}
         <div className="logo">CINQ</div>
       </div>
-      <div className="header-label">{headerLabel}</div>
+      {showStatsBtn
+        ? <button className="stats-btn hoverable" onClick={onStats} aria-label="Your stats">STATS</button>
+        : <div className="header-label">{headerLabel}</div>
+      }
     </div>
   );
 }

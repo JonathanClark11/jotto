@@ -85,3 +85,55 @@ export const GROUP_PALETTE = [
 export function groupColor(i) {
   return GROUP_PALETTE[i % GROUP_PALETTE.length];
 }
+
+// Puzzle #1 = Sep 1 2026 — sequential number shown in history.
+const PUZZLE_EPOCH = '2026-09-01';
+export function puzzleNumber(dateKey) {
+  const epochMs = new Date(PUZZLE_EPOCH + 'T12:00:00').getTime();
+  const keyMs = new Date(dateKey + 'T12:00:00').getTime();
+  return Math.max(1, Math.round((keyMs - epochMs) / 86400000) + 1);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + n);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+export function computeLocalStats(history) {
+  const total = history.length;
+  if (total === 0) return { currentStreak: 0, bestStreak: 0, avgGuesses: null, winPct: 0, total: 0 };
+
+  const wins = history.filter((r) => r.won !== false);
+  const winSet = new Set(wins.map((r) => r.date));
+
+  const today = todayKey();
+  const yesterday = addDays(today, -1);
+
+  let currentStreak = 0;
+  let startDate = winSet.has(today) ? today : (winSet.has(yesterday) ? yesterday : null);
+  if (startDate) {
+    let d = startDate;
+    while (winSet.has(d)) { currentStreak++; d = addDays(d, -1); }
+  }
+
+  const sortedWins = [...winSet].sort();
+  let bestStreak = 0, run = 0, prev = null;
+  for (const s of sortedWins) {
+    run = prev && addDays(prev, 1) === s ? run + 1 : 1;
+    if (run > bestStreak) bestStreak = run;
+    prev = s;
+  }
+
+  const avgGuesses = wins.length > 0
+    ? Number((wins.reduce((s, r) => s + r.n, 0) / wins.length).toFixed(1))
+    : null;
+
+  return {
+    currentStreak,
+    bestStreak,
+    avgGuesses,
+    winPct: Math.round((wins.length / total) * 100),
+    total,
+  };
+}
