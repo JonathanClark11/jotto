@@ -359,5 +359,6 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     playerStats: s.playerStats,
     playerStatsLoading: s.playerStatsLoading,
     shareFeedback: s.shareFeedback,
+    shareCopiedDate: s.shareCopiedDate,
   };
 }

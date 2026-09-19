@@ -86,6 +86,18 @@ export function groupColor(i) {
   return GROUP_PALETTE[i % GROUP_PALETTE.length];
 }
 
+const COUNT_EMOJI = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'];
+
+export function buildShareText(puzzleNum, guesses, won) {
+  const rows = guesses.map((g, i) =>
+    i === guesses.length - 1 && won ? '✅' : COUNT_EMOJI[Math.min(g.count, 5)]
+  );
+  const header = won
+    ? `Cinq #${puzzleNum} — solved in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}`
+    : `Cinq #${puzzleNum} — X/${guesses.length}`;
+  return `${header}\n\n${rows.join(' ')}\n\ncinq.app`;
+}
+
 // Puzzle #1 = Sep 1 2026 — sequential number shown in history.
 const PUZZLE_EPOCH = '2026-09-01';
 export function puzzleNumber(dateKey) {

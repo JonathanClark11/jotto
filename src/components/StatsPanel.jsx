@@ -56,6 +56,15 @@ export function StatsPanel({ vals, actions }) {
                 <span className={`stats-result-badge ${record.won !== false ? 'stats-badge-win' : 'stats-badge-loss'}`}>
                   {record.won !== false ? 'WIN' : 'DNF'}
                 </span>
+                {record.guesses && (
+                  <button
+                    className="stats-share-btn"
+                    onClick={() => actions.shareHistoryItem(record.date)}
+                    aria-label="Share result"
+                  >
+                    {vals.shareCopiedDate === record.date ? '✓' : 'SHARE'}
+                  </button>
+                )}
               </div>
             </div>
           ))}
