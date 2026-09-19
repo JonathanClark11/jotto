@@ -170,6 +170,23 @@ button {
   padding-top: 14px;
 }
 
+.home-privacy {
+  text-align: center;
+  padding-top: 4px;
+}
+
+.home-privacy-link {
+  font-size: 11px;
+  color: #B7B2A6;
+  text-decoration: none;
+  letter-spacing: .05em;
+}
+
+.home-privacy-link:hover {
+  color: #8B877D;
+  text-decoration: underline;
+}
+
 .setup-screen {
   padding: 18px 2px 0;
   flex: 1;

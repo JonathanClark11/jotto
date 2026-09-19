@@ -56,6 +56,9 @@ export function Home({ vals, actions }) {
       )}
 
       <div className="home-footnote">5 LETTERS &middot; NO REPEATS</div>
+      <div className="home-privacy">
+        <a href="/privacy" className="home-privacy-link">Privacy Policy</a>
+      </div>
     </div>
   );
 }
