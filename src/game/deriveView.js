@@ -3,6 +3,21 @@ import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
   DIM = '#D5D1C7', FADE = '#B7B2A6', AMBER = '#C58A2D';
 
+function formatLastPlayed(isoString) {
+  if (!isoString) return '';
+  try {
+    const date = new Date(isoString);
+    const diff = Date.now() - date.getTime();
+    const days = Math.floor(diff / 86400000);
+    if (days === 0) return 'TODAY';
+    if (days === 1) return 'YESTERDAY';
+    if (days < 7) return days + ' DAYS AGO';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  } catch {
+    return '';
+  }
+}
+
 // Pure translation of game state -> everything the screens need to render.
 // Mirrors the Claude Design prototype's renderVals(), so every visual rule
 // (colors, badge math, auto-cross-out logic) stays exactly as designed.
@@ -10,6 +25,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   const s = state;
   const autoE = autoElim(s.myGuesses, s.marks);
   const isHome = s.screen === 'home', isSetup = s.screen === 'setup';
+  const isFriends = s.screen === 'friends';
   const isRivalLobby = s.screen === 'rivalLobby', isGame = s.screen === 'game';
   const isRival = isGame && s.mode === 'rival';
   const isDuel = isRival;
@@ -153,12 +169,16 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   }
   if (isSetup) headerLabel = 'RIVAL · PICK A WORD';
   if (isRivalLobby) headerLabel = 'RIVAL · FRIEND MATCH';
+  if (isFriends) headerLabel = 'FRIENDS';
 
   const todayKeyVal = todayKey();
   const hist = loadHistory();
   const todayRec = hist.find((h) => h.date === todayKeyVal);
   const dailyComplete = Boolean(todayRec);
-  const dailyDateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  // Parse from todayKeyVal (YYYY-MM-DD) so server and client agree regardless of timezone.
+  const [_y, _m, _d] = todayKeyVal.split('-').map(Number);
+  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const dailyDateLabel = MONTHS[_m - 1] + ' ' + _d;
   const dailySub = todayRec
     ? 'Solved in ' + todayRec.n + (todayRec.n === 1 ? ' guess. ' : ' guesses. ') + 'Tap to see today’s real results.'
     : 'One word for everyone, every day. Solve it and compare with completed players.';
@@ -242,8 +262,43 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     return { ...match, statusLabel };
   });
 
+  const activeFriendGames = (s.savedMatches || [])
+    .filter((m) => m.status !== 'finished')
+    .map((m) => {
+      let statusLabel = 'NOT YOUR TURN';
+      if (m.status === 'waiting') statusLabel = 'WAITING FOR FRIEND';
+      else if (m.yourTurn) statusLabel = 'YOUR TURN';
+      else if (m.pendingGuess) statusLabel = 'GUESS QUEUED';
+      return { ...m, statusLabel };
+    })
+    .sort((a, b) => {
+      if (a.yourTurn && !b.yourTurn) return -1;
+      if (!a.yourTurn && b.yourTurn) return 1;
+      return String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''));
+    });
+
+  const yourTurnCount = activeFriendGames.filter((m) => m.yourTurn).length;
+
+  const friendMap = new Map();
+  for (const match of s.savedMatches || []) {
+    const name = match.friendName || 'Friend';
+    if (!friendMap.has(name)) {
+      friendMap.set(name, { friendName: name, latestAt: '', rematchMatch: null });
+    }
+    const entry = friendMap.get(name);
+    if ((match.updatedAt || '') > entry.latestAt) entry.latestAt = match.updatedAt || '';
+    if (match.status === 'finished') {
+      if (!entry.rematchMatch || (match.updatedAt || '') > (entry.rematchMatch.updatedAt || '')) {
+        entry.rematchMatch = match;
+      }
+    }
+  }
+  const friendList = Array.from(friendMap.values())
+    .map((f) => ({ ...f, lastPlayedLabel: formatLastPlayed(f.latestAt) }))
+    .sort((a, b) => String(b.latestAt || '').localeCompare(String(a.latestAt || '')));
+
   return {
-    isHome, isSetup, isRivalLobby, isGame, isDuel, isRival,
+    isHome, isSetup, isRivalLobby, isGame, isDuel, isRival, isFriends,
     dailyDateLabel, dailySub, dailyComplete,
     isDailyResult, dailyRankLabel, dailyStatsLoading: s.dailyStatsLoading,
     histBars, statPlayed, statAvg, statRank,
@@ -268,6 +323,9 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     inviteCopied: s.inviteCopied,
     matchBusy: s.matchBusy,
     friendMatches,
+    activeFriendGames,
+    friendList,
+    yourTurnCount,
     joinCode: s.joinCode,
     lobbyError: isRivalLobby ? s.error : '',
     setupName: s.setupName,
