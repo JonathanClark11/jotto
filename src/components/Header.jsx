@@ -7,7 +7,7 @@ export function Header({ showBack, onHome, headerLabel, showStatsBtn, onStats })
             &#8249;
           </button>
         )}
-        <div className="logo">CINQ</div>
+        <div className="logo">CINQLE</div>
       </div>
       {showStatsBtn
         ? <button className="stats-btn hoverable" onClick={onStats} aria-label="Your stats">STATS</button>
