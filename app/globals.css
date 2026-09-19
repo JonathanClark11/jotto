@@ -909,3 +909,191 @@ button {
   background: none;
   font-family: inherit;
 }
+
+/* Friends panel — added because SWE put these in src/index.css which isn't loaded by the vinext app */
+
+.friends-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 2px 0;
+  gap: 24px;
+  overflow-y: auto;
+}
+
+.friends-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 20px;
+  text-align: center;
+}
+
+.friends-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #1C1B18;
+}
+
+.friends-empty-sub {
+  font-size: 13px;
+  color: #8B877D;
+  line-height: 1.5;
+  max-width: 260px;
+}
+
+.friends-invite-btn {
+  margin-top: 8px;
+  padding: 14px 28px;
+  border-radius: 10px;
+  background: #1C1B18;
+  color: #FAF9F6;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.friends-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friends-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #8B877D;
+  padding-bottom: 2px;
+}
+
+.friend-game-card {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  border: 1.5px solid #DAD6CC;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  background: #FAF9F6;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.friend-game-card--your-turn {
+  border-color: #0E7C86;
+  background: #F2F7F7;
+}
+
+.friend-game-card-top {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+.friend-game-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  color: #1C1B18;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.your-turn-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: #fff;
+  background: #0E7C86;
+  border-radius: 999px;
+  padding: 3px 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.friend-game-card-bot {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.friend-game-card-code {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: #B7B2A6;
+}
+
+.friend-game-card-status {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: #8B877D;
+}
+
+.friend-list-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #EEEBE4;
+  gap: 12px;
+}
+
+.friend-list-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.friend-list-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1C1B18;
+}
+
+.friend-list-date {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: #B7B2A6;
+}
+
+.friend-rematch-btn {
+  flex-shrink: 0;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1.5px solid #1C1B18;
+  background: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: #1C1B18;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}

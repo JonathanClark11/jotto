@@ -571,9 +571,7 @@ button {
   text-align: left;
   background: #FAF9F6;
   font-family: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  box-sizing: border-box;
 }
 
 .friend-game-card--your-turn {
@@ -583,9 +581,11 @@ button {
 
 .friend-game-card-top {
   display: flex;
-  align-items: center;
+  flex-direction: row;
+  align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
 }
 
 .friend-game-card-name {
@@ -593,6 +593,11 @@ button {
   font-weight: 700;
   letter-spacing: .02em;
   color: #1C1B18;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .your-turn-badge {
@@ -603,13 +608,18 @@ button {
   background: #0E7C86;
   border-radius: 999px;
   padding: 3px 8px;
-  flex: none;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .friend-game-card-bot {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
 }
 
 .friend-game-card-code {
@@ -628,6 +638,7 @@ button {
 
 .friend-list-row {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
@@ -638,17 +649,21 @@ button {
 .friend-list-info {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 3px;
   min-width: 0;
+  flex: 1;
 }
 
 .friend-list-name {
+  display: block;
   font-size: 15px;
   font-weight: 700;
   color: #1C1B18;
 }
 
 .friend-list-date {
+  display: block;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: .08em;
@@ -656,7 +671,7 @@ button {
 }
 
 .friend-rematch-btn {
-  flex: none;
+  flex-shrink: 0;
   padding: 9px 14px;
   border-radius: 8px;
   border: 1.5px solid #1C1B18;
@@ -667,4 +682,5 @@ button {
   color: #1C1B18;
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
 }

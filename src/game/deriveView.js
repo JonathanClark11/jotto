@@ -175,7 +175,10 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   const hist = loadHistory();
   const todayRec = hist.find((h) => h.date === todayKeyVal);
   const dailyComplete = Boolean(todayRec);
-  const dailyDateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  // Parse from todayKeyVal (YYYY-MM-DD) so server and client agree regardless of timezone.
+  const [_y, _m, _d] = todayKeyVal.split('-').map(Number);
+  const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const dailyDateLabel = MONTHS[_m - 1] + ' ' + _d;
   const dailySub = todayRec
     ? 'Solved in ' + todayRec.n + (todayRec.n === 1 ? ' guess. ' : ' guesses. ') + 'Tap to see today’s real results.'
     : 'One word for everyone, every day. Solve it and compare with completed players.';
