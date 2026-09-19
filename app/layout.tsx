@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 
 // Change APP_NAME in src/config.js when the final name is chosen.
-const APP_NAME = "Cinq";
+const APP_NAME = "Cinqle";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

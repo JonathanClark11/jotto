@@ -93,9 +93,9 @@ export function buildShareText(puzzleNum, guesses, won) {
     i === guesses.length - 1 && won ? '✅' : COUNT_EMOJI[Math.min(g.count, 5)]
   );
   const header = won
-    ? `Cinq #${puzzleNum} — solved in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}`
-    : `Cinq #${puzzleNum} — X/${guesses.length}`;
-  return `${header}\n\n${rows.join(' ')}\n\ncinq.app`;
+    ? `Cinqle #${puzzleNum} — solved in ${guesses.length} ${guesses.length === 1 ? 'guess' : 'guesses'}`
+    : `Cinqle #${puzzleNum} — X/${guesses.length}`;
+  return `${header}\n\n${rows.join(' ')}\n\ncinqle.app`;
 }
 
 // Puzzle #1 = Sep 1 2026 — sequential number shown in history.

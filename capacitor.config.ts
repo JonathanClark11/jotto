@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.jonathanclark11.cinq",
-  appName: "Cinq",
+  appName: "Cinqle",
   webDir: "dist/client",
   server: {
     url: "https://cinq.jonathanclark11.workers.dev",
