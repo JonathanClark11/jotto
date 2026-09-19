@@ -1,4 +1,4 @@
-import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory } from './logic.js';
+import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory, computeLocalStats, puzzleNumber } from './logic.js';
 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
   DIM = '#D5D1C7', FADE = '#B7B2A6', AMBER = '#C58A2D';
@@ -175,7 +175,11 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   const hist = loadHistory();
   const todayRec = hist.find((h) => h.date === todayKeyVal);
   const dailyComplete = Boolean(todayRec);
-  // Parse from todayKeyVal (YYYY-MM-DD) so server and client agree regardless of timezone.
+  const localStats = computeLocalStats(hist);
+  const localHistory = hist.slice().sort((a, b) => b.date.localeCompare(a.date)).map((r) => ({
+    ...r,
+    puzzleNumber: r.puzzleNumber ?? puzzleNumber(r.date),
+  }));
   const [_y, _m, _d] = todayKeyVal.split('-').map(Number);
   const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const dailyDateLabel = MONTHS[_m - 1] + ' ' + _d;
@@ -299,6 +303,8 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
 
   return {
     isHome, isSetup, isRivalLobby, isGame, isDuel, isRival, isFriends,
+    showStats: s.showStats, showStatsBtn: isHome,
+    localStats, localHistory,
     dailyDateLabel, dailySub, dailyComplete,
     isDailyResult, dailyRankLabel, dailyStatsLoading: s.dailyStatsLoading,
     histBars, statPlayed, statAvg, statRank,

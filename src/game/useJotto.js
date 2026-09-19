@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
-import { pick, todayKey, dailyWord, loadHistory, saveHistory } from './logic.js';
+import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber } from './logic.js';
 import { APP_NAME } from '../config.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
@@ -68,6 +68,7 @@ const initialState = {
   rematchCode: '', rematchSourceCode: '', rematchSourceToken: '',
   playerStats: null, playerStatsLoading: false, shareFeedback: '',
   matchBusy: false, inviteCopied: false, dailyStats: null, dailyStatsLoading: false,
+  showStats: false,
 };
 
 function savedState(next) {
@@ -370,11 +371,14 @@ export function useJotto() {
     });
   }, [set]);
 
+  const openStats = useCallback(() => set({ showStats: true }), [set]);
+  const closeStats = useCallback(() => set({ showStats: false }), [set]);
+
   const goHome = useCallback(() => {
     set({
       ...freshRound(), screen: 'home', mode: null, mySecret: '', rivalSecret: '',
       matchCode: '', playerToken: '', matchStatus: '', opponentJoined: false,
-      savedMatches: loadSavedMatches(),
+      savedMatches: loadSavedMatches(), showStats: false,
     });
     window.history.replaceState({}, '', window.location.pathname);
   }, [set]);
@@ -500,7 +504,7 @@ export function useJotto() {
         const key = current.dailyDate || todayKey();
         const history = loadHistory();
         if (!history.some((record) => record.date === key)) {
-          history.push({ date: key, n: myGuesses.length, word: current.rivalSecret, guesses: myGuesses });
+          history.push({ date: key, n: myGuesses.length, word: current.rivalSecret, guesses: myGuesses, won: true, puzzleNumber: puzzleNumber(key) });
           saveHistory(history);
         }
         set({ myGuesses, input: '', result: { won: true, n: myGuesses.length, daily: true }, dailyStatsLoading: true });
@@ -587,12 +591,12 @@ export function useJotto() {
   const actions = useMemo(() => ({
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
     setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
-    tapLetter, backspace, tapTool,
+    openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
   }), [
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
     setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
-    tapLetter, backspace, tapTool,
+    openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
   ]);
 
