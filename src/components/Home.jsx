@@ -27,6 +27,16 @@ export function Home({ vals, actions }) {
         <div className="mode-sub">Invite a friend. Take turns guessing each other&rsquo;s secret word.</div>
       </button>
 
+      <button className="mode-card plain-card card-hoverable" onClick={actions.goFriends}>
+        <div className="mode-card-head">
+          <div className="mode-title">FRIENDS</div>
+          {vals.yourTurnCount > 0 && (
+            <span className="friends-turn-badge">{vals.yourTurnCount} YOUR TURN</span>
+          )}
+        </div>
+        <div className="mode-sub">Your rival history, active games, and quick rematches.</div>
+      </button>
+
       {vals.playerStats?.gamesPlayed > 0 && (
         <div className="player-stats-card">
           <div className="player-stats-head">
@@ -42,27 +52,6 @@ export function Home({ vals, actions }) {
           <div className="player-stats-foot">
             BEST {vals.playerStats.bestGame ?? '–'} &middot; CURRENT STREAK {vals.playerStats.currentStreak}
           </div>
-        </div>
-      )}
-
-      {vals.friendMatches.length > 0 && (
-        <div className="friend-games">
-          <div className="friend-games-title">FRIEND GAMES</div>
-          {vals.friendMatches.map((match) => (
-            <button
-              className="friend-game-row"
-              key={match.code}
-              onClick={() => actions.resumeRival(match.code, match.token)}
-            >
-              <span>
-                <strong>{match.friendName}</strong>
-                <small>{match.code}</small>
-              </span>
-              <span className={`friend-game-status ${match.yourTurn ? 'is-your-turn' : ''}`}>
-                {match.statusLabel}
-              </span>
-            </button>
-          ))}
         </div>
       )}
 

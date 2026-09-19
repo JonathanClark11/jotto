@@ -275,7 +275,8 @@ export function useJotto() {
     state.matchCode, state.playerToken, applyMatch, syncMatch]);
 
   useEffect(() => {
-    if (state.screen !== 'home' || state.savedMatches.length === 0) return undefined;
+    if (state.screen !== 'home' && state.screen !== 'friends') return undefined;
+    if (state.savedMatches.length === 0 && state.screen === 'home') return undefined;
     refreshSavedMatches();
     const timer = window.setInterval(refreshSavedMatches, 8000);
     return () => window.clearInterval(timer);
@@ -355,6 +356,19 @@ export function useJotto() {
     set({ ...freshRound(), screen: 'game', mode: 'rival', matchCode, playerToken, error: '' });
     syncMatch(matchCode, playerToken, false);
   }, [set, syncMatch]);
+
+  const goFriends = useCallback(() => {
+    set({ screen: 'friends', savedMatches: loadSavedMatches() });
+  }, [set]);
+
+  const startRematchFrom = useCallback((code, token, opponentName) => {
+    set({
+      ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'rematch',
+      setupName: stateRef.current.myName || localStorage.getItem(LAST_NAME_KEY) || '',
+      rematchSourceCode: code, rematchSourceToken: token,
+      opponentName: opponentName || '',
+    });
+  }, [set]);
 
   const goHome = useCallback(() => {
     set({
@@ -572,11 +586,13 @@ export function useJotto() {
 
   const actions = useMemo(() => ({
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
-    setJoinCode, setSetupName, resumeRival, goHome, tapLetter, backspace, tapTool,
+    setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
+    tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
   }), [
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
-    setJoinCode, setSetupName, resumeRival, goHome, tapLetter, backspace, tapTool,
+    setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
+    tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
   ]);
 
