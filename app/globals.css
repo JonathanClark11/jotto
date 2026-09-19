@@ -1245,3 +1245,21 @@ button {
   flex: none;
   margin-top: 0;
 }
+
+.stats-share-btn {
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1.5px solid #DAD6CC;
+  background: transparent;
+  color: #5C594F;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.stats-share-btn:active {
+  background: #F1EFE9;
+}

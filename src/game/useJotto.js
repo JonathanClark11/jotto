@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
-import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber } from './logic.js';
+import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
@@ -68,7 +68,7 @@ const initialState = {
   rematchCode: '', rematchSourceCode: '', rematchSourceToken: '',
   playerStats: null, playerStatsLoading: false, shareFeedback: '',
   matchBusy: false, inviteCopied: false, dailyStats: null, dailyStatsLoading: false,
-  showStats: false,
+  showStats: false, shareCopiedDate: null,
 };
 
 function savedState(next) {
@@ -535,28 +535,47 @@ export function useJotto() {
     const current = stateRef.current;
     if (!current.result) return;
     const result = current.result;
-    let summary = '';
-    if (result.daily) summary = `I solved today's ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else if (current.mode === 'solo') summary = `I cracked ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else if (result.won) summary = `I beat ${current.opponentName || 'a friend'} at ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!`;
-    else summary = `${current.opponentName || 'My friend'} won our ${APP_NAME} match — rematch?`;
-    const stats = current.playerStats;
-    const statsLine = stats?.gamesPlayed
-      ? `My Rival stats: ${stats.gamesPlayed} games · ${stats.winRate}% wins · ${stats.averageGuesses ?? '–'} avg guesses.`
-      : '';
-    const text = [summary, statsLine, 'Can you crack the five-letter word?'].filter(Boolean).join('\n');
-    const url = `${window.location.origin}${window.location.pathname}`;
+    let text;
+    if (result.daily) {
+      const pNum = puzzleNumber(current.dailyDate || todayKey());
+      text = buildShareText(pNum, current.myGuesses, result.won !== false);
+    } else if (current.mode === 'solo') {
+      text = `I cracked ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!\n\ncinq.app`;
+    } else if (result.won) {
+      text = `I beat ${current.opponentName || 'a friend'} at ${APP_NAME} in ${result.n} ${result.n === 1 ? 'guess' : 'guesses'}!\n\ncinq.app`;
+    } else {
+      text = `${current.opponentName || 'My friend'} won our ${APP_NAME} match — rematch?\n\ncinq.app`;
+    }
     try {
       if (navigator.share) {
-        await navigator.share({ title: `My ${APP_NAME} result`, text, url });
+        await navigator.share({ title: `${APP_NAME}`, text });
         set({ shareFeedback: 'SHARED' });
       } else {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        set({ shareFeedback: 'RESULT COPIED' });
+        await navigator.clipboard.writeText(text);
+        set({ shareFeedback: 'COPIED' });
       }
       window.setTimeout(() => set({ shareFeedback: '' }), 2200);
     } catch (error) {
       if (error?.name !== 'AbortError') set({ shareFeedback: 'SHARE FAILED' });
+    }
+  }, [set]);
+
+  const shareHistoryItem = useCallback(async (date) => {
+    const history = loadHistory();
+    const record = history.find((r) => r.date === date);
+    if (!record || !record.guesses) return;
+    const pNum = record.puzzleNumber || puzzleNumber(date);
+    const text = buildShareText(pNum, record.guesses, record.won !== false);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${APP_NAME} #${pNum}`, text });
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+      set({ shareCopiedDate: date });
+      window.setTimeout(() => set({ shareCopiedDate: null }), 2200);
+    } catch (error) {
+      // user cancelled share sheet
     }
   }, [set]);
 
@@ -593,11 +612,13 @@ export function useJotto() {
     setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
     openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
+    shareHistoryItem,
   }), [
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
     setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
     openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
+    shareHistoryItem,
   ]);
 
   return { state, actions, secretList: SECRET_LIST, showWordsLeft: true };
