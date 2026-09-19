@@ -8,6 +8,7 @@ export default function PrivacyPolicy() {
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 24px", fontFamily: "system-ui, sans-serif", lineHeight: 1.7, color: "#1C1B18" }}>
+      <a href="/" style={{ display: "inline-block", marginBottom: 24, fontSize: 13, fontWeight: 700, letterSpacing: ".08em", color: "#5C594F", textDecoration: "none" }}>← BACK</a>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Privacy Policy</h1>
       <p style={{ color: "#888", marginBottom: 32 }}>Last updated: {updated}</p>
 
