@@ -1,10 +1,10 @@
-import { ensureJottoSchema, errorResponse, getJottoDb } from "../_shared/jotto-db";
+import { ensureCinqSchema, errorResponse, getCinqDb } from "../_shared/cinq-db";
 
 type Bucket = { guesses: number; players: number };
 
 async function statsFor(db: D1Database, date: string, yourGuesses: number | null) {
   const grouped = await db.prepare(`SELECT guesses, COUNT(*) AS players
-    FROM jotto_daily_results WHERE date = ? GROUP BY guesses ORDER BY guesses`)
+    FROM cinq_daily_results WHERE date = ? GROUP BY guesses ORDER BY guesses`)
     .bind(date)
     .all<Bucket>();
   const buckets = (grouped.results ?? []).map((row) => ({
@@ -30,8 +30,8 @@ function validDate(value: unknown): value is string {
 }
 
 export async function GET(request: Request) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const params = new URL(request.url).searchParams;
   const date = params.get("date");
   const guesses = params.get("guesses");
@@ -40,8 +40,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const body = await request.json().catch(() => ({}));
   if (!validDate(body.date)) return errorResponse("A valid date is required");
   if (typeof body.playerKey !== "string" || body.playerKey.length < 16 || body.playerKey.length > 128) {
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
   }
   const guesses = Number(body.guesses);
   if (!Number.isInteger(guesses) || guesses < 1 || guesses > 50) return errorResponse("Guess count is invalid");
-  await db.prepare(`INSERT OR IGNORE INTO jotto_daily_results
+  await db.prepare(`INSERT OR IGNORE INTO cinq_daily_results
     (date, player_key, guesses, completed_at) VALUES (?, ?, ?, ?)`)
     .bind(body.date, body.playerKey, guesses, new Date().toISOString())
     .run();

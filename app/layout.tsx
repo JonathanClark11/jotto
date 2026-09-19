@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 
 // Change APP_NAME in src/config.js when the final name is chosen.
-const APP_NAME = "Jortal";
+const APP_NAME = "Cinq";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const protocol =
     requestHeaders.get("x-forwarded-proto") ??
     (host.startsWith("localhost") ? "http" : "https");
-  const imageUrl = `${protocol}://${host}/og-jortal.png`;
+  const imageUrl = `${protocol}://${host}/og-cinq.png`;
 
   return {
     title: `${APP_NAME} — Five-Letter Word Guessing Game`,

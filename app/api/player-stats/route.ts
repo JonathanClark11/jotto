@@ -1,9 +1,9 @@
 import {
-  ensureJottoSchema,
+  ensureCinqSchema,
   errorResponse,
-  getJottoDb,
+  getCinqDb,
   normalizePlayerKey,
-} from "../_shared/jotto-db";
+} from "../_shared/cinq-db";
 
 type ResultRow = {
   player_name: string;
@@ -13,18 +13,18 @@ type ResultRow = {
 };
 
 export async function GET(request: Request) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const playerKey = normalizePlayerKey(new URL(request.url).searchParams.get("playerKey"));
   if (!playerKey) return errorResponse("Player profile not found", 400);
 
   const own = await db.prepare(`SELECT player_name, won, guesses, completed_at
-    FROM jortal_player_results WHERE player_key = ? ORDER BY completed_at DESC`)
+    FROM cinq_player_results WHERE player_key = ? ORDER BY completed_at DESC`)
     .bind(playerKey)
     .all<ResultRow>();
   const rows = own.results ?? [];
   const comparable = rows.filter((row) => Number(row.guesses) > 0);
-  const population = await db.prepare(`SELECT guesses FROM jortal_player_results
+  const population = await db.prepare(`SELECT guesses FROM cinq_player_results
     WHERE guesses > 0`).all<{ guesses: number }>();
   const allGuesses = (population.results ?? []).map((row) => Number(row.guesses));
   const average = comparable.length

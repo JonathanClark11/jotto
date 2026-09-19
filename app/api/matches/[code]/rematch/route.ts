@@ -1,9 +1,9 @@
 import {
   createMatchCode,
   createPlayerToken,
-  ensureJottoSchema,
+  ensureCinqSchema,
   errorResponse,
-  getJottoDb,
+  getCinqDb,
   getMatch,
   isSecretWord,
   normalizeCode,
@@ -12,11 +12,11 @@ import {
   normalizeWord,
   playerRole,
   publicMatchState,
-} from "../../../_shared/jotto-db";
+} from "../../../_shared/cinq-db";
 
 export async function POST(request: Request, context: { params: Promise<{ code: string }> }) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const { code: rawCode } = await context.params;
   const sourceCode = normalizeCode(rawCode);
   const body = await request.json().catch(() => ({}));
@@ -37,7 +37,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
     let candidate = createMatchCode();
     for (let tries = 0; tries < 4 && await getMatch(db, candidate); tries += 1) candidate = createMatchCode();
     if (await getMatch(db, candidate)) return errorResponse("Could not create a rematch", 503);
-    const claim = await db.prepare(`UPDATE jotto_matches SET rematch_code = ?, updated_at = ?
+    const claim = await db.prepare(`UPDATE cinq_matches SET rematch_code = ?, updated_at = ?
       WHERE code = ? AND status = 'finished' AND rematch_code IS NULL`)
       .bind(candidate, new Date().toISOString(), sourceCode)
       .run();
@@ -45,7 +45,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
       rematchCode = candidate;
       const newToken = createPlayerToken();
       const now = new Date().toISOString();
-      await db.prepare(`INSERT INTO jotto_matches
+      await db.prepare(`INSERT INTO cinq_matches
         (code, status, player1_token, player1_name, player1_key, player1_secret,
           current_turn, created_at, updated_at)
         VALUES (?, 'waiting', ?, ?, ?, ?, 1, ?, ?)`)
@@ -65,7 +65,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   if (playerKey && rematch.player1_key === playerKey) return errorResponse("Your rematch is waiting for your friend", 409);
 
   const newToken = createPlayerToken();
-  const result = await db.prepare(`UPDATE jotto_matches
+  const result = await db.prepare(`UPDATE cinq_matches
     SET player2_token = ?, player2_name = ?, player2_key = ?, player2_secret = ?,
       status = 'active', updated_at = ?
     WHERE code = ? AND status = 'waiting' AND player2_token IS NULL`)

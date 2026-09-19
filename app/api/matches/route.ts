@@ -1,20 +1,20 @@
 import {
   createMatchCode,
   createPlayerToken,
-  ensureJottoSchema,
+  ensureCinqSchema,
   errorResponse,
-  getJottoDb,
+  getCinqDb,
   getMatch,
   isSecretWord,
   normalizeName,
   normalizePlayerKey,
   normalizeWord,
   publicMatchState,
-} from "../_shared/jotto-db";
+} from "../_shared/cinq-db";
 
 export async function POST(request: Request) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const body = await request.json().catch(() => ({}));
   const name = normalizeName(body.name);
   const playerKey = normalizePlayerKey(body.playerKey);
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   const token = createPlayerToken();
   const now = new Date().toISOString();
-  await db.prepare(`INSERT INTO jotto_matches
+  await db.prepare(`INSERT INTO cinq_matches
     (code, status, player1_token, player1_name, player1_key, player1_secret, current_turn, created_at, updated_at)
     VALUES (?, 'waiting', ?, ?, ?, ?, 1, ?, ?)`)
     .bind(code, token, name, playerKey || null, secret, now, now)

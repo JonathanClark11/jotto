@@ -6,8 +6,8 @@ import { APP_NAME } from '../config.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
 const GUESS_SET = new Set(GUESS_WORDS);
-const MATCHES_KEY = 'jotto-rival-matches-v1';
-const LAST_NAME_KEY = 'jotto-player-name';
+const MATCHES_KEY = 'cinq-rival-matches-v1';
+const LAST_NAME_KEY = 'cinq-player-name';
 
 function isValidGuess(word) {
   return SECRET_LIST.includes(word) || GUESS_SET.has(word);
@@ -97,7 +97,7 @@ async function jsonRequest(url, options) {
 }
 
 function anonymousDailyKey() {
-  const storageKey = 'jotto-daily-player';
+  const storageKey = 'cinq-daily-player';
   let key = localStorage.getItem(storageKey);
   if (!key) {
     key = typeof crypto.randomUUID === 'function'
@@ -109,7 +109,7 @@ function anonymousDailyKey() {
 }
 
 function playerProfileKey() {
-  const storageKey = 'jortal-player-profile';
+  const storageKey = 'cinq-player-profile';
   let key = localStorage.getItem(storageKey);
   if (!key) {
     key = typeof crypto.randomUUID === 'function'
@@ -120,7 +120,7 @@ function playerProfileKey() {
   return key;
 }
 
-export function useJotto() {
+export function useCinq() {
   const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
   const queuedSubmitRef = useRef('');
@@ -129,7 +129,7 @@ export function useJotto() {
   const set = useCallback((patch) => {
     setState((previous) => {
       const next = typeof patch === 'function' ? patch(previous) : { ...previous, ...patch };
-      try { localStorage.setItem('jotto-game-v3', JSON.stringify(savedState(next))); } catch { /* optional */ }
+      try { localStorage.setItem('cinq-game-v3', JSON.stringify(savedState(next))); } catch { /* optional */ }
       return next;
     });
   }, []);
@@ -174,7 +174,7 @@ export function useJotto() {
   const syncMatch = useCallback(async (code, token, quiet = false) => {
     try {
       const data = await jsonRequest(`/api/matches/${code}`, {
-        headers: { 'x-jotto-player': token },
+        headers: { 'x-cinq-player': token },
       });
       applyMatch(data.match, token);
     } catch (error) {
@@ -187,7 +187,7 @@ export function useJotto() {
     for (const savedMatch of savedMatches) {
       try {
         const data = await jsonRequest(`/api/matches/${savedMatch.code}`, {
-          headers: { 'x-jotto-player': savedMatch.token },
+          headers: { 'x-cinq-player': savedMatch.token },
         });
         storeMatchSummary(data.match, savedMatch.token);
       } catch { /* leave unavailable matches in the device list */ }
@@ -223,7 +223,7 @@ export function useJotto() {
 
   useEffect(() => {
     let saved = null;
-    try { saved = JSON.parse(localStorage.getItem('jotto-game-v3') || 'null'); } catch { /* ignore */ }
+    try { saved = JSON.parse(localStorage.getItem('cinq-game-v3') || 'null'); } catch { /* ignore */ }
     if (saved?.mode === 'daily' && saved.dailyDate !== todayKey()) saved = null;
     const savedMatches = loadSavedMatches();
     if (saved) setState((previous) => ({ ...previous, ...saved, savedMatches }));

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Cinq",
   webDir: "dist/client",
   server: {
-    url: "https://jotto.jonathanclark11.workers.dev",
+    url: "https://cinq.jonathanclark11.workers.dev",
     cleartext: false,
   },
   ios: {

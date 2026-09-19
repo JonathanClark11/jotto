@@ -1,18 +1,18 @@
 import {
-  ensureJottoSchema,
+  ensureCinqSchema,
   errorResponse,
-  getJottoDb,
+  getCinqDb,
   getMatch,
   normalizeCode,
   publicMatchState,
-} from "../../_shared/jotto-db";
+} from "../../_shared/cinq-db";
 
 export async function GET(request: Request, context: { params: Promise<{ code: string }> }) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const { code: rawCode } = await context.params;
   const code = normalizeCode(rawCode);
-  const token = request.headers.get("x-jotto-player") ?? "";
+  const token = request.headers.get("x-cinq-player") ?? "";
   const match = await getMatch(db, code);
   if (!match) return errorResponse("Match not found", 404);
   const state = await publicMatchState(db, match, token);

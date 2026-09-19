@@ -32,7 +32,7 @@ export function dailyWord(key, list) {
 
 export function loadHistory() {
   try {
-    return JSON.parse(localStorage.getItem('jotto-daily-history') || '[]');
+    return JSON.parse(localStorage.getItem('cinq-daily-history') || '[]');
   } catch {
     return [];
   }
@@ -40,7 +40,7 @@ export function loadHistory() {
 
 export function saveHistory(hist) {
   try {
-    localStorage.setItem('jotto-daily-history', JSON.stringify(hist));
+    localStorage.setItem('cinq-daily-history', JSON.stringify(hist));
   } catch {
     // storage unavailable — daily stats just won't persist
   }

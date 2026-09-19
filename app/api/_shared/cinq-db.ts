@@ -31,14 +31,14 @@ type GuessRow = {
   turn_number: number;
 };
 
-export function getJottoDb(): D1Database {
-  if (!env.DB) throw new Error("Jortal's database binding is unavailable");
+export function getCinqDb(): D1Database {
+  if (!env.DB) throw new Error("Cinq's database binding is unavailable");
   return env.DB;
 }
 
-export async function ensureJottoSchema(db: D1Database) {
+export async function ensureCinqSchema(db: D1Database) {
   await db.batch([
-    db.prepare(`CREATE TABLE IF NOT EXISTS jotto_matches (
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_matches (
       code TEXT PRIMARY KEY,
       status TEXT NOT NULL DEFAULT 'waiting',
       player1_token TEXT NOT NULL,
@@ -55,7 +55,7 @@ export async function ensureJottoSchema(db: D1Database) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS jotto_guesses (
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_guesses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       match_code TEXT NOT NULL,
       player INTEGER NOT NULL,
@@ -64,23 +64,23 @@ export async function ensureJottoSchema(db: D1Database) {
       match_count INTEGER NOT NULL,
       created_at TEXT NOT NULL
     )`),
-    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS jotto_guesses_player_word_idx
-      ON jotto_guesses (match_code, player, word)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS jotto_pending_guesses (
+    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS cinq_guesses_player_word_idx
+      ON cinq_guesses (match_code, player, word)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_pending_guesses (
       match_code TEXT NOT NULL,
       player INTEGER NOT NULL,
       word TEXT NOT NULL,
       created_at TEXT NOT NULL,
       PRIMARY KEY (match_code, player)
     )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS jotto_daily_results (
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_daily_results (
       date TEXT NOT NULL,
       player_key TEXT NOT NULL,
       guesses INTEGER NOT NULL,
       completed_at TEXT NOT NULL,
       PRIMARY KEY (date, player_key)
     )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS jortal_player_results (
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_player_results (
       match_code TEXT NOT NULL,
       player_key TEXT NOT NULL,
       player_name TEXT NOT NULL,
@@ -89,25 +89,25 @@ export async function ensureJottoSchema(db: D1Database) {
       completed_at TEXT NOT NULL,
       PRIMARY KEY (match_code, player_key)
     )`),
-    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS jortal_player_results_match_player_idx
-      ON jortal_player_results (match_code, player_key)`),
+    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS cinq_player_results_match_player_idx
+      ON cinq_player_results (match_code, player_key)`),
   ]);
-  const matchColumns = await db.prepare("PRAGMA table_info(jotto_matches)").all<{ name: string }>();
+  const matchColumns = await db.prepare("PRAGMA table_info(cinq_matches)").all<{ name: string }>();
   const columnNames = new Set((matchColumns.results ?? []).map((column) => column.name));
   if (!columnNames.has("player1_name")) {
-    await db.prepare("ALTER TABLE jotto_matches ADD COLUMN player1_name TEXT NOT NULL DEFAULT 'Player 1'").run();
+    await db.prepare("ALTER TABLE cinq_matches ADD COLUMN player1_name TEXT NOT NULL DEFAULT 'Player 1'").run();
   }
   if (!columnNames.has("player2_name")) {
-    await db.prepare("ALTER TABLE jotto_matches ADD COLUMN player2_name TEXT").run();
+    await db.prepare("ALTER TABLE cinq_matches ADD COLUMN player2_name TEXT").run();
   }
   if (!columnNames.has("player1_key")) {
-    await db.prepare("ALTER TABLE jotto_matches ADD COLUMN player1_key TEXT").run();
+    await db.prepare("ALTER TABLE cinq_matches ADD COLUMN player1_key TEXT").run();
   }
   if (!columnNames.has("player2_key")) {
-    await db.prepare("ALTER TABLE jotto_matches ADD COLUMN player2_key TEXT").run();
+    await db.prepare("ALTER TABLE cinq_matches ADD COLUMN player2_key TEXT").run();
   }
   if (!columnNames.has("rematch_code")) {
-    await db.prepare("ALTER TABLE jotto_matches ADD COLUMN rematch_code TEXT").run();
+    await db.prepare("ALTER TABLE cinq_matches ADD COLUMN rematch_code TEXT").run();
   }
 }
 
@@ -160,7 +160,7 @@ export function createPlayerToken() {
 }
 
 export async function getMatch(db: D1Database, code: string) {
-  return db.prepare("SELECT * FROM jotto_matches WHERE code = ?")
+  return db.prepare("SELECT * FROM cinq_matches WHERE code = ?")
     .bind(code)
     .first<MatchRow>();
 }
@@ -175,7 +175,7 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
   const role = playerRole(match, token);
   if (!role) return null;
   const allGuesses = await db.prepare(
-    "SELECT player, word, match_count, turn_number FROM jotto_guesses WHERE match_code = ? ORDER BY turn_number, id",
+    "SELECT player, word, match_count, turn_number FROM cinq_guesses WHERE match_code = ? ORDER BY turn_number, id",
   ).bind(match.code).all<GuessRow>();
   const rows = allGuesses.results ?? [];
   const opponent = role === 1 ? 2 : 1;
@@ -184,7 +184,7 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
   const yourSecret = role === 1 ? match.player1_secret : match.player2_secret;
   const opponentSecret = role === 1 ? match.player2_secret : match.player1_secret;
   const pending = await db.prepare(
-    "SELECT word FROM jotto_pending_guesses WHERE match_code = ? AND player = ?",
+    "SELECT word FROM cinq_pending_guesses WHERE match_code = ? AND player = ?",
   ).bind(match.code, role).first<{ word: string }>();
   const shape = (row: GuessRow) => ({ word: row.word, count: row.match_count });
 
@@ -211,7 +211,7 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
 export async function recordPlayerResults(db: D1Database, match: MatchRow, completedAt: string) {
   if (!match.winner) return;
   const counts = await db.prepare(`SELECT player, COUNT(*) AS guesses
-    FROM jotto_guesses WHERE match_code = ? GROUP BY player`)
+    FROM cinq_guesses WHERE match_code = ? GROUP BY player`)
     .bind(match.code)
     .all<{ player: number; guesses: number }>();
   const byPlayer = new Map((counts.results ?? []).map((row) => [Number(row.player), Number(row.guesses)]));
@@ -220,7 +220,7 @@ export async function recordPlayerResults(db: D1Database, match: MatchRow, compl
     { key: match.player2_key, name: match.player2_name, player: 2 },
   ].filter((row) => row.key && row.name);
   if (!rows.length) return;
-  await db.batch(rows.map((row) => db.prepare(`INSERT OR IGNORE INTO jortal_player_results
+  await db.batch(rows.map((row) => db.prepare(`INSERT OR IGNORE INTO cinq_player_results
     (match_code, player_key, player_name, won, guesses, completed_at)
     VALUES (?, ?, ?, ?, ?, ?)`)
     .bind(match.code, row.key, row.name, match.winner === row.player ? 1 : 0,

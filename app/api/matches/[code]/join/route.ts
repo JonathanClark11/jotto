@@ -1,8 +1,8 @@
 import {
   createPlayerToken,
-  ensureJottoSchema,
+  ensureCinqSchema,
   errorResponse,
-  getJottoDb,
+  getCinqDb,
   getMatch,
   isSecretWord,
   normalizeCode,
@@ -10,11 +10,11 @@ import {
   normalizePlayerKey,
   normalizeWord,
   publicMatchState,
-} from "../../../_shared/jotto-db";
+} from "../../../_shared/cinq-db";
 
 export async function POST(request: Request, context: { params: Promise<{ code: string }> }) {
-  const db = getJottoDb();
-  await ensureJottoSchema(db);
+  const db = getCinqDb();
+  await ensureCinqSchema(db);
   const { code: rawCode } = await context.params;
   const code = normalizeCode(rawCode);
   const body = await request.json().catch(() => ({}));
@@ -29,7 +29,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   if (match.status !== "waiting" || match.player2_token) return errorResponse("This match already has two players", 409);
 
   const token = createPlayerToken();
-  const result = await db.prepare(`UPDATE jotto_matches
+  const result = await db.prepare(`UPDATE cinq_matches
     SET player2_token = ?, player2_name = ?, player2_key = ?, player2_secret = ?, status = 'active', updated_at = ?
     WHERE code = ? AND status = 'waiting' AND player2_token IS NULL`)
     .bind(token, name, playerKey || null, secret, new Date().toISOString(), code)

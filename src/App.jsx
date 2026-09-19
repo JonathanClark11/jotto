@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useJotto } from './game/useJotto.js';
+import { useCinq } from './game/useCinq.js';
 import { deriveView } from './game/deriveView.js';
 import { Header } from './components/Header.jsx';
 import { Home } from './components/Home.jsx';
@@ -12,7 +12,7 @@ import { Result } from './components/Result.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 
 function App() {
-  const { state, actions, secretList, showWordsLeft } = useJotto();
+  const { state, actions, secretList, showWordsLeft } = useCinq();
   const vals = useMemo(
     () => deriveView(state, actions, secretList, showWordsLeft),
     [state, actions, secretList, showWordsLeft],
