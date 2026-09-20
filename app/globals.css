@@ -163,6 +163,15 @@ button {
   line-height: 1.45;
 }
 
+.home-attribution {
+  font-size: 11px;
+  color: #C8C4BC;
+  text-align: center;
+  padding-top: 6px;
+  padding-bottom: 8px;
+  font-style: italic;
+}
+
 .home-footnote {
   font-size: 11px;
   color: #B7B2A6;
