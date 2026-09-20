@@ -1,7 +1,7 @@
 export function Home({ vals, actions }) {
   return (
     <div className="home-screen" data-screen-label="Home">
-      <div className="home-title">CINQLE</div>
+      <img src="/cinqle-title.png" alt="Cinqle" className="home-title-img" />
       <div className="home-blurb">
         Guess the secret five-letter word. Every guess earns a count &mdash; how many of its letters are in the word.
       </div>
