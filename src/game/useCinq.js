@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { App as CapApp } from '@capacitor/app';
 import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
@@ -590,6 +592,23 @@ export function useCinq() {
     } catch {
       set({ error: `Share code ${code} with your friend` });
     }
+  }, [set]);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const handle = CapApp.addListener('appUrlOpen', ({ url }) => {
+      try {
+        const u = new URL(url);
+        const code = u.searchParams.get('join');
+        if (!code) return;
+        set({
+          screen: 'rivalLobby', mode: 'rival',
+          joinCode: code.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8),
+          error: '',
+        });
+      } catch { /* ignore malformed URLs */ }
+    });
+    return () => { handle.then((h) => h.remove()); };
   }, [set]);
 
   useEffect(() => {
