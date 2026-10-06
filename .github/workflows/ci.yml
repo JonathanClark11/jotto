@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13
+          cache: npm
+
+      - run: npm ci
+
+      # Lint currently fails on main (react-hooks/set-state-in-effect in
+      # src/game/useCinq.js, a Next link rule in app/privacy/page.tsx, and the
+      # generated ios/ bundle). Reported but non-blocking until those are fixed;
+      # remove continue-on-error once lint is clean.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - run: npm test
+
+      - run: npm run build
