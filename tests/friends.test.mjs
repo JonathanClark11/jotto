@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildFriendList, normalizeFriendCode, removeFriend, upsertFriend } from '../src/game/friends.js';
+import { buildFriendList, mergeIncoming, normalizeFriendCode, removeFriend, upsertFriend } from '../src/game/friends.js';
 
 test('normalizeFriendCode strips ambiguous characters and caps at 6', () => {
   assert.equal(normalizeFriendCode(' ab-c d2e3f4g '), 'ABCD2E');
@@ -37,4 +37,16 @@ test('buildFriendList shows a saved friend with no matches yet', () => {
   const list = buildFriendList([{ friendCode: 'ZZZZ22', name: 'New Pal' }], []);
   assert.equal(list.length, 1);
   assert.equal(list[0].rematchMatch, null);
+});
+
+test('mergeIncoming adds people who added us, skips removed ones, and is a no-op when nothing is new', () => {
+  const friends = [{ friendCode: 'ABCD23', name: 'Sam' }];
+  const incoming = [
+    { friendCode: 'ABCD23', name: 'Sam' },
+    { friendCode: 'ZZZZ22', name: 'Riley' },
+    { friendCode: 'QQQQ33', name: 'Blocked Bo' },
+  ];
+  const merged = mergeIncoming(friends, incoming, ['QQQQ33']);
+  assert.deepEqual(merged.map((f) => f.name), ['Sam', 'Riley']);
+  assert.equal(mergeIncoming(merged, incoming, ['QQQQ33']), merged);
 });

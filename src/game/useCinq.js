@@ -7,6 +7,7 @@ import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buil
 import { APP_NAME } from '../config.js';
 import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
+  loadRemoved, saveRemoved, mergeIncoming,
 } from './friends.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
@@ -265,7 +266,12 @@ export function useCinq() {
     if (code === stateRef.current.friendCode) { set({ friendError: 'That is your own friend ID' }); return; }
     set({ friendBusy: true, friendError: '' });
     try {
-      const data = await jsonRequest(`/api/players/${code}`);
+      const data = await jsonRequest('/api/friends', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ playerKey: playerProfileKey(), friendCode: code }),
+      });
+      saveRemoved(loadRemoved().filter((removedCode) => removedCode !== code));
       set((previous) => {
         const friends = upsertFriend(previous.friends, { friendCode: data.friendCode, name: data.name });
         saveFriends(friends);
@@ -274,6 +280,19 @@ export function useCinq() {
     } catch (error) {
       set({ friendBusy: false, friendError: error.message });
     }
+  }, [set]);
+
+  // People who added our friend ID show up here without us adding them back.
+  const syncIncomingFriends = useCallback(async () => {
+    try {
+      const data = await jsonRequest(`/api/friends/incoming?playerKey=${encodeURIComponent(playerProfileKey())}`);
+      set((previous) => {
+        const friends = mergeIncoming(previous.friends, data.friends || [], loadRemoved());
+        if (friends === previous.friends) return previous;
+        saveFriends(friends);
+        return { ...previous, friends };
+      });
+    } catch { /* offline: try again next time */ }
   }, [set]);
 
   useEffect(() => {
@@ -287,6 +306,7 @@ export function useCinq() {
     if (saved) setState((previous) => ({ ...previous, ...saved, savedMatches, ...profileFields }));
     else setState((previous) => ({ ...previous, savedMatches, ...profileFields }));
     loadPlayerStats();
+    syncIncomingFriends();
 
     // Players who already picked a name in an earlier version get a friend ID without retyping it.
     const legacyName = profile.name || localStorage.getItem(LAST_NAME_KEY) || '';
@@ -315,7 +335,7 @@ export function useCinq() {
     } else if (saved?.mode === 'daily' && saved.result && saved.dailyDate) {
       loadDailyStats(saved.dailyDate, saved.result.n, true);
     }
-  }, [addFriendByCode, loadDailyStats, loadPlayerStats, registerProfile, syncMatch]);
+  }, [addFriendByCode, loadDailyStats, loadPlayerStats, registerProfile, syncIncomingFriends, syncMatch]);
 
   useEffect(() => {
     if (state.screen !== 'game' || state.mode !== 'rival' || !state.matchCode || !state.playerToken) return undefined;
@@ -348,10 +368,14 @@ export function useCinq() {
   useEffect(() => {
     if (state.screen !== 'home' && state.screen !== 'multiplayer') return undefined;
     if (state.savedMatches.length === 0 && state.screen === 'home') return undefined;
-    refreshSavedMatches();
-    const timer = window.setInterval(refreshSavedMatches, 8000);
+    const refresh = () => {
+      refreshSavedMatches();
+      if (state.screen === 'multiplayer') syncIncomingFriends();
+    };
+    refresh();
+    const timer = window.setInterval(refresh, 8000);
     return () => window.clearInterval(timer);
-  }, [state.screen, state.savedMatches.length, refreshSavedMatches]);
+  }, [state.screen, state.savedMatches.length, refreshSavedMatches, syncIncomingFriends]);
 
   useEffect(() => {
     if (state.mode === 'rival' && state.matchStatus === 'finished') loadPlayerStats();
@@ -439,6 +463,7 @@ export function useCinq() {
   const addFriend = useCallback(() => addFriendByCode(stateRef.current.friendInput), [addFriendByCode]);
 
   const dropFriend = useCallback((friendCode) => {
+    saveRemoved(Array.from(new Set(loadRemoved().concat([friendCode]))));
     set((previous) => {
       const friends = removeFriend(previous.friends, friendCode);
       saveFriends(friends);

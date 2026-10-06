@@ -98,6 +98,14 @@ export async function ensureCinqSchema(db: D1Database) {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_friend_adds (
+      adder_key TEXT NOT NULL,
+      target_key TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (adder_key, target_key)
+    )`),
+    db.prepare(`CREATE INDEX IF NOT EXISTS cinq_friend_adds_target_idx
+      ON cinq_friend_adds (target_key)`),
   ]);
   const matchColumns = await db.prepare("PRAGMA table_info(cinq_matches)").all<{ name: string }>();
   const columnNames = new Set((matchColumns.results ?? []).map((column) => column.name));
