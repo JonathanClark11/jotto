@@ -1469,3 +1469,99 @@ button {
   cursor: pointer;
   padding: 10px 0 0;
 }
+
+/* Friend detail */
+
+.friend-detail-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 2px 8px;
+  overflow-y: auto;
+}
+
+.friend-detail-id {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .24em;
+  color: #0E7C86;
+  margin-top: 4px;
+}
+
+.h2h-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #EEEBE4;
+}
+
+.h2h-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.h2h-cell strong {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1C1B18;
+}
+
+.h2h-cell span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  color: #8B877D;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.result-pill {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  border-radius: 999px;
+  padding: 3px 8px;
+  border: 1.5px solid #DAD6CC;
+  color: #5C594F;
+}
+
+.result-pill--win {
+  background: #0E7C86;
+  border-color: #0E7C86;
+  color: #fff;
+}
+
+.result-pill--loss {
+  border-color: #B4443A;
+  color: #B4443A;
+}
+
+.remove-friend-btn {
+  margin-top: 6px;
+  align-self: center;
+  border: none;
+  background: none;
+  color: #B4443A;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.friend-list-open {
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}

@@ -54,7 +54,12 @@ export function removeFriend(friends, friendCode) {
 
 // One row per person. Saved friends (known friend ID) come first; opponents from older
 // matches that never had a friend ID are grouped by name so nobody disappears.
-export function buildFriendList(friends, savedMatches) {
+export function friendKey(friend) {
+  return friend.friendCode || `name:${String(friend.friendName || friend.name || '').toLowerCase()}`;
+}
+
+export function buildFriendList(friends, savedMatches, removed = []) {
+  const hidden = new Set(removed);
   const entries = new Map();
   const byName = new Map();
   for (const friend of friends) {
@@ -80,7 +85,7 @@ export function buildFriendList(friends, savedMatches) {
       entry.rematchMatch = match;
     }
   }
-  return Array.from(entries.values()).sort((a, b) => {
+  return Array.from(entries.values()).filter((entry) => !hidden.has(friendKey(entry))).sort((a, b) => {
     if (a.latestAt !== b.latestAt) return String(b.latestAt).localeCompare(String(a.latestAt));
     return a.friendName.localeCompare(b.friendName, undefined, { sensitivity: 'base' });
   });
@@ -108,4 +113,27 @@ export function mergeIncoming(friends, incoming, removedCodes = []) {
     next = upsertFriend(next, { friendCode: person.friendCode, name: person.name });
   }
   return next;
+}
+
+// Matches played against one friend: by friend ID when both sides have one, else by name (older matches).
+export function matchesForFriend(friend, savedMatches) {
+  const name = String(friend.friendName || '').toLowerCase();
+  return savedMatches
+    .filter((match) => match.status !== 'waiting')
+    .filter((match) => (match.friendCode && friend.friendCode
+      ? match.friendCode === friend.friendCode
+      : String(match.friendName || '').toLowerCase() === name))
+    .slice()
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
+}
+
+// Head-to-head record from the finished matches in a friend's history.
+export function headToHead(matches) {
+  let wins = 0;
+  let losses = 0;
+  for (const match of matches) {
+    if (match.status !== 'finished' || !match.winner) continue;
+    if (match.winner === match.role) wins += 1; else losses += 1;
+  }
+  return { wins, losses, played: wins + losses };
 }

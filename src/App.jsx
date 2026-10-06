@@ -4,6 +4,7 @@ import { deriveView } from './game/deriveView.js';
 import { Header } from './components/Header.jsx';
 import { Home } from './components/Home.jsx';
 import { Multiplayer } from './components/Multiplayer.jsx';
+import { FriendDetail } from './components/FriendDetail.jsx';
 import { Setup } from './components/Setup.jsx';
 import { Game } from './components/Game.jsx';
 import { Board } from './components/Board.jsx';
@@ -22,13 +23,14 @@ function App() {
       {vals.showHeader && (
         <Header
           showBack={vals.showBack}
-          onHome={actions.goHome}
+          onHome={vals.isFriendDetail ? actions.closeFriend : actions.goHome}
           headerLabel={vals.headerLabel}
         />
       )}
 
       {vals.isHome && <Home vals={vals} actions={actions} />}
       {vals.isMultiplayer && <Multiplayer vals={vals} actions={actions} />}
+      {vals.isFriendDetail && vals.friendDetail && <FriendDetail vals={vals} actions={actions} />}
       {vals.isSetup && <Setup vals={vals} actions={actions} />}
       {vals.isGame && <Game vals={vals} actions={actions} />}
       {vals.showBoard && <Board vals={vals} actions={actions} />}

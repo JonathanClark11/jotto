@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildFriendList, mergeIncoming, normalizeFriendCode, removeFriend, upsertFriend } from '../src/game/friends.js';
+import { buildFriendList, friendKey, headToHead, matchesForFriend, mergeIncoming, normalizeFriendCode, removeFriend, upsertFriend } from '../src/game/friends.js';
 
 test('normalizeFriendCode strips ambiguous characters and caps at 6', () => {
   assert.equal(normalizeFriendCode(' ab-c d2e3f4g '), 'ABCD2E');
@@ -49,4 +49,35 @@ test('mergeIncoming adds people who added us, skips removed ones, and is a no-op
   const merged = mergeIncoming(friends, incoming, ['QQQQ33']);
   assert.deepEqual(merged.map((f) => f.name), ['Sam', 'Riley']);
   assert.equal(mergeIncoming(merged, incoming, ['QQQQ33']), merged);
+});
+
+test('buildFriendList hides removed friends even when match history exists', () => {
+  const friends = [{ friendCode: 'ABCD23', name: 'Sam' }];
+  const matches = [
+    { code: 'M1', status: 'finished', friendName: 'Sam', friendCode: 'ABCD23', updatedAt: '2026-10-03T00:00:00Z', role: 1 },
+    { code: 'M2', status: 'finished', friendName: 'Legacy Lou', updatedAt: '2026-10-02T00:00:00Z', role: 2 },
+  ];
+  assert.deepEqual(buildFriendList(friends, matches, ['ABCD23']).map((f) => f.friendName), ['Legacy Lou']);
+  assert.deepEqual(buildFriendList(friends, matches, ['ABCD23', 'name:legacy lou']), []);
+  assert.equal(friendKey({ friendCode: '', friendName: 'Legacy Lou' }), 'name:legacy lou');
+});
+
+test('matchesForFriend + headToHead give the 1v1 record, newest first, ignoring waiting games', () => {
+  const matches = [
+    { code: 'A', status: 'finished', friendName: 'Sam', friendCode: 'ABCD23', winner: 1, role: 1, updatedAt: '2026-10-01T00:00:00Z' },
+    { code: 'B', status: 'finished', friendName: 'Sam', friendCode: 'ABCD23', winner: 2, role: 1, updatedAt: '2026-10-02T00:00:00Z' },
+    { code: 'C', status: 'finished', friendName: 'Sam', winner: 2, role: 2, updatedAt: '2026-10-03T00:00:00Z' },
+    { code: 'D', status: 'active', friendName: 'Sam', friendCode: 'ABCD23', winner: null, role: 1, updatedAt: '2026-10-04T00:00:00Z' },
+    { code: 'E', status: 'waiting', friendName: 'Waiting for friend', updatedAt: '2026-10-05T00:00:00Z' },
+    { code: 'F', status: 'finished', friendName: 'Riley', friendCode: 'ZZZZ22', winner: 1, role: 1, updatedAt: '2026-10-05T00:00:00Z' },
+  ];
+  const history = matchesForFriend({ friendCode: 'ABCD23', friendName: 'Sam' }, matches);
+  // C predates friend IDs (no code on the match) but is the same "Sam", so it counts too
+  assert.deepEqual(history.map((m) => m.code), ['D', 'C', 'B', 'A']);
+  assert.deepEqual(headToHead(history), { wins: 2, losses: 1, played: 3 });
+  // a friend with a different ID never picks up Sam's matches
+  assert.deepEqual(matchesForFriend({ friendCode: 'ZZZZ22', friendName: 'Riley' }, matches).map((m) => m.code), ['F']);
+  // legacy friend with no friend ID matches by name
+  const legacy = matchesForFriend({ friendCode: '', friendName: 'sam' }, matches);
+  assert.deepEqual(legacy.map((m) => m.code), ['D', 'C', 'B', 'A']);
 });

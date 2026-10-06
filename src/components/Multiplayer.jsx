@@ -109,24 +109,15 @@ export function Multiplayer({ vals, actions }) {
         )}
         {friendList.map((friend) => (
           <div className="friend-list-row" key={friend.friendCode || friend.friendName}>
-            <div className="friend-list-info">
-              <strong className="friend-list-name">{friend.friendName}</strong>
+            <button className="friend-list-info friend-list-open" onClick={() => actions.openFriend(friend)}>
+              <strong className="friend-list-name">{friend.friendName} &rsaquo;</strong>
               <span className="friend-list-date">
                 {[friend.friendCode, friend.lastPlayedLabel].filter(Boolean).join(' · ')}
               </span>
-            </div>
+            </button>
             <button className="friend-rematch-btn" onClick={() => actions.challengeFriend(friend)}>
               {friend.rematchMatch ? 'REMATCH' : 'CHALLENGE'}
             </button>
-            {friend.friendCode && !friend.rematchMatch && (
-              <button
-                className="mp-remove-btn"
-                onClick={() => actions.dropFriend(friend.friendCode)}
-                aria-label={`Remove ${friend.friendName}`}
-              >
-                &#x2715;
-              </button>
-            )}
           </div>
         ))}
 

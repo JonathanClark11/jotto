@@ -1,4 +1,4 @@
-import { buildFriendList } from './friends.js';
+import { buildFriendList, friendKey, headToHead, matchesForFriend } from './friends.js';
 import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory, computeLocalStats, puzzleNumber } from './logic.js';
 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
@@ -27,6 +27,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   const autoE = autoElim(s.myGuesses, s.marks);
   const isHome = s.screen === 'home', isSetup = s.screen === 'setup';
   const isMultiplayer = s.screen === 'multiplayer', isGame = s.screen === 'game';
+  const isFriendDetail = s.screen === 'friend';
   const isRival = isGame && s.mode === 'rival';
   const isDuel = isRival;
   const inputEnabled = !isRival || s.matchStatus === 'active';
@@ -169,6 +170,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   }
   if (isSetup) headerLabel = 'RIVAL · PICK A WORD';
   if (isMultiplayer) headerLabel = 'MULTIPLAYER';
+  if (isFriendDetail) headerLabel = 'FRIEND';
 
   const todayKeyVal = todayKey();
   const hist = loadHistory();
@@ -282,11 +284,38 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
 
   const yourTurnCount = activeFriendGames.filter((m) => m.yourTurn).length;
 
-  const friendList = buildFriendList(s.friends || [], s.savedMatches || [])
+  const friendList = buildFriendList(s.friends || [], s.savedMatches || [], s.removedFriends || [])
     .map((f) => ({ ...f, lastPlayedLabel: formatLastPlayed(f.latestAt) }));
 
+  let friendDetail = null;
+  if (isFriendDetail && s.selectedFriend) {
+    const selectedKey = friendKey(s.selectedFriend);
+    const entry = friendList.find((f) => friendKey(f) === selectedKey)
+      || { ...s.selectedFriend, rematchMatch: null };
+    const history = matchesForFriend(entry, s.savedMatches || []);
+    const record = headToHead(history);
+    friendDetail = {
+      friendName: entry.friendName,
+      friendCode: entry.friendCode,
+      rematchMatch: entry.rematchMatch,
+      ...record,
+      matches: history.map((m) => {
+        const finished = m.status === 'finished';
+        const won = finished && m.winner === m.role;
+        let resultLabel = 'IN PROGRESS';
+        if (finished) resultLabel = won ? 'WIN' : 'LOSS';
+        const counts = (finished && m.yourCount && m.theirCount)
+          ? `You ${m.yourCount} · ${entry.friendName} ${m.theirCount}` : '';
+        return {
+          code: m.code, token: m.token, finished, won, resultLabel, counts,
+          dateLabel: formatLastPlayed(m.updatedAt),
+        };
+      }),
+    };
+  }
+
   return {
-    isHome, isSetup, isMultiplayer, isGame, isDuel, isRival,
+    isHome, isSetup, isMultiplayer, isFriendDetail, isGame, isDuel, isRival, friendDetail,
     showStats: s.showStats, hasDailyHistory: hist.length > 0,
     localStats, localHistory,
     dailyDateLabel, dailySub, dailyComplete,
