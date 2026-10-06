@@ -10,6 +10,7 @@ import {
   normalizePlayerKey,
   normalizeWord,
   publicMatchState,
+  upsertPlayer,
 } from "../../../_shared/cinq-db";
 
 export async function POST(request: Request, context: { params: Promise<{ code: string }> }) {
@@ -22,6 +23,7 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const playerKey = normalizePlayerKey(body.playerKey);
   const secret = normalizeWord(body.secret);
   if (!name) return errorResponse("Enter your name");
+  if (playerKey) await upsertPlayer(db, playerKey, name);
   if (!isSecretWord(secret)) return errorResponse("Choose a valid five-letter word with no repeated letters");
 
   const match = await getMatch(db, code);

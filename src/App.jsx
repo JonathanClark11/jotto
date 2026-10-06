@@ -3,8 +3,7 @@ import { useCinq } from './game/useCinq.js';
 import { deriveView } from './game/deriveView.js';
 import { Header } from './components/Header.jsx';
 import { Home } from './components/Home.jsx';
-import { Friends } from './components/Friends.jsx';
-import { RivalLobby } from './components/RivalLobby.jsx';
+import { Multiplayer } from './components/Multiplayer.jsx';
 import { Setup } from './components/Setup.jsx';
 import { Game } from './components/Game.jsx';
 import { Board } from './components/Board.jsx';
@@ -20,17 +19,16 @@ function App() {
 
   return (
     <div className="app-shell">
-      <Header
-        showBack={vals.showBack}
-        onHome={actions.goHome}
-        headerLabel={vals.headerLabel}
-        showStatsBtn={vals.showStatsBtn}
-        onStats={actions.openStats}
-      />
+      {vals.showHeader && (
+        <Header
+          showBack={vals.showBack}
+          onHome={actions.goHome}
+          headerLabel={vals.headerLabel}
+        />
+      )}
 
       {vals.isHome && <Home vals={vals} actions={actions} />}
-      {vals.isFriends && <Friends vals={vals} actions={actions} />}
-      {vals.isRivalLobby && <RivalLobby vals={vals} actions={actions} />}
+      {vals.isMultiplayer && <Multiplayer vals={vals} actions={actions} />}
       {vals.isSetup && <Setup vals={vals} actions={actions} />}
       {vals.isGame && <Game vals={vals} actions={actions} />}
       {vals.showBoard && <Board vals={vals} actions={actions} />}

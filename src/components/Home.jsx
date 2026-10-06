@@ -23,18 +23,13 @@ export function Home({ vals, actions }) {
       </button>
 
       <button className="mode-card plain-card card-hoverable" onClick={actions.startRival}>
-        <div className="mode-title">RIVAL</div>
-        <div className="mode-sub">Invite a friend. Take turns guessing each other&rsquo;s secret word.</div>
-      </button>
-
-      <button className="mode-card plain-card card-hoverable" onClick={actions.goFriends}>
         <div className="mode-card-head">
-          <div className="mode-title">FRIENDS</div>
+          <div className="mode-title">MULTIPLAYER</div>
           {vals.yourTurnCount > 0 && (
             <span className="friends-turn-badge">{vals.yourTurnCount} YOUR TURN</span>
           )}
         </div>
-        <div className="mode-sub">Your rival history, active games, and quick rematches.</div>
+        <div className="mode-sub">Play friends. Take turns guessing each other&rsquo;s secret word, rematch, and keep a friends list.</div>
       </button>
 
       {vals.playerStats?.gamesPlayed > 0 && (
@@ -53,6 +48,10 @@ export function Home({ vals, actions }) {
             BEST {vals.playerStats.bestGame ?? '–'} &middot; CURRENT STREAK {vals.playerStats.currentStreak}
           </div>
         </div>
+      )}
+
+      {vals.hasDailyHistory && (
+        <button className="daily-history-link" onClick={actions.openStats}>DAILY HISTORY &rsaquo;</button>
       )}
 
       <div className="home-footnote">5 LETTERS &middot; NO REPEATS</div>

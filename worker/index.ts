@@ -9,7 +9,10 @@ const AASA = {
     details: [
       {
         appIDs: ["P55DBCXQCB.com.jonathanclark11.cinq"],
-        components: [{ "/": "/*", "?": { join: "?" } }],
+        components: [
+          { "/": "/*", "?": { join: "?" } },
+          { "/": "/*", "?": { friend: "?" } },
+        ],
       },
     ],
   },

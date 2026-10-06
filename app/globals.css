@@ -1296,3 +1296,176 @@ button {
   color: #8B877D;
   text-decoration: underline;
 }
+
+/* Multiplayer screen (merged rival lobby + friends) */
+
+.multiplayer-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 2px 8px;
+  overflow-y: auto;
+}
+
+.mp-profile {
+  border: 1.5px solid #DAD6CC;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #FAF9F6;
+}
+
+.mp-profile-top,
+.mp-friend-id-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mp-friend-id-row {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #EEEBE4;
+}
+
+.mp-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  color: #8B877D;
+}
+
+.mp-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1C1B18;
+  margin-top: 2px;
+}
+
+.mp-friend-id {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .24em;
+  color: #0E7C86;
+  margin-top: 2px;
+}
+
+.mp-name-label {
+  padding-top: 0;
+}
+
+.mp-hint {
+  font-size: 12px;
+  color: #8B877D;
+  line-height: 1.5;
+  padding-top: 8px;
+}
+
+.mp-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-name-input,
+.mp-code-input {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+.mp-code-input {
+  height: 48px;
+  font-size: 17px;
+}
+
+.mp-small-btn {
+  flex-shrink: 0;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: 9px;
+  border: 1.5px solid #DAD6CC;
+  background: transparent;
+  color: #1C1B18;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  cursor: pointer;
+}
+
+.mp-small-btn--solid {
+  border-color: #1C1B18;
+  background: #1C1B18;
+  color: #FAF9F6;
+}
+
+.mp-small-btn:disabled {
+  opacity: .5;
+  cursor: default;
+}
+
+.mp-link-btn {
+  border: none;
+  background: none;
+  color: #0E7C86;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  cursor: pointer;
+  padding: 6px 0 6px 10px;
+}
+
+.mp-join {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mp-add-label {
+  margin-top: 14px;
+}
+
+.mp-empty {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #8B877D;
+  padding: 4px 0 2px;
+}
+
+.mp-remove-btn {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  color: #B7B2A6;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 6px;
+}
+
+.playing-as {
+  padding-top: 18px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: #8B877D;
+}
+
+.playing-as strong {
+  color: #1C1B18;
+  letter-spacing: .04em;
+  font-size: 15px;
+  margin-left: 4px;
+}
+
+.daily-history-link {
+  align-self: center;
+  border: none;
+  background: none;
+  color: #5C594F;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  cursor: pointer;
+  padding: 10px 0 0;
+}

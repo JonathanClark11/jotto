@@ -1,3 +1,4 @@
+import { buildFriendList } from './friends.js';
 import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory, computeLocalStats, puzzleNumber } from './logic.js';
 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
@@ -25,8 +26,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
   const s = state;
   const autoE = autoElim(s.myGuesses, s.marks);
   const isHome = s.screen === 'home', isSetup = s.screen === 'setup';
-  const isFriends = s.screen === 'friends';
-  const isRivalLobby = s.screen === 'rivalLobby', isGame = s.screen === 'game';
+  const isMultiplayer = s.screen === 'multiplayer', isGame = s.screen === 'game';
   const isRival = isGame && s.mode === 'rival';
   const isDuel = isRival;
   const inputEnabled = !isRival || s.matchStatus === 'active';
@@ -168,8 +168,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     headerLabel = modeName + ' · GUESS ' + (s.myGuesses.length + 1);
   }
   if (isSetup) headerLabel = 'RIVAL · PICK A WORD';
-  if (isRivalLobby) headerLabel = 'RIVAL · FRIEND MATCH';
-  if (isFriends) headerLabel = 'FRIENDS';
+  if (isMultiplayer) headerLabel = 'MULTIPLAYER';
 
   const todayKeyVal = todayKey();
   const hist = loadHistory();
@@ -283,27 +282,12 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
 
   const yourTurnCount = activeFriendGames.filter((m) => m.yourTurn).length;
 
-  const friendMap = new Map();
-  for (const match of s.savedMatches || []) {
-    const name = match.friendName || 'Friend';
-    if (!friendMap.has(name)) {
-      friendMap.set(name, { friendName: name, latestAt: '', rematchMatch: null });
-    }
-    const entry = friendMap.get(name);
-    if ((match.updatedAt || '') > entry.latestAt) entry.latestAt = match.updatedAt || '';
-    if (match.status === 'finished') {
-      if (!entry.rematchMatch || (match.updatedAt || '') > (entry.rematchMatch.updatedAt || '')) {
-        entry.rematchMatch = match;
-      }
-    }
-  }
-  const friendList = Array.from(friendMap.values())
-    .map((f) => ({ ...f, lastPlayedLabel: formatLastPlayed(f.latestAt) }))
-    .sort((a, b) => String(b.latestAt || '').localeCompare(String(a.latestAt || '')));
+  const friendList = buildFriendList(s.friends || [], s.savedMatches || [])
+    .map((f) => ({ ...f, lastPlayedLabel: formatLastPlayed(f.latestAt) }));
 
   return {
-    isHome, isSetup, isRivalLobby, isGame, isDuel, isRival, isFriends,
-    showStats: s.showStats, showStatsBtn: isHome,
+    isHome, isSetup, isMultiplayer, isGame, isDuel, isRival,
+    showStats: s.showStats, hasDailyHistory: hist.length > 0,
     localStats, localHistory,
     dailyDateLabel, dailySub, dailyComplete,
     isDailyResult, dailyRankLabel, dailyStatsLoading: s.dailyStatsLoading,
@@ -313,6 +297,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     rematchLabel: s.rematchCode ? 'JOIN REMATCH' : 'REMATCH',
     showBoard: isSetup || (isGame && (!isRival || s.matchStatus !== 'waiting')),
     showBack: !isHome,
+    showHeader: !isHome,
     headerLabel,
     youTabStyle, rivalTabStyle,
     rivalBadge: s.rivalNew,
@@ -333,12 +318,24 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     friendList,
     yourTurnCount,
     joinCode: s.joinCode,
-    lobbyError: isRivalLobby ? s.error : '',
+    lobbyError: isMultiplayer ? s.error : '',
+    profileName: s.profileName,
+    friendCode: s.friendCode,
+    hasProfileName: Boolean(s.profileName),
+    profileNameInput: s.profileNameInput,
+    profileEditing: s.profileEditing,
+    profileBusy: s.profileBusy,
+    friendInput: s.friendInput,
+    friendError: s.friendError,
+    friendBusy: s.friendBusy,
+    friendIdCopied: s.friendIdCopied,
     setupName: s.setupName,
-    setupTitle: 'Your name and secret word',
+    setupTitle: s.profileName ? 'Pick your secret word' : 'Your name and secret word',
     setupBlurb: s.setupIntent === 'rematch'
       ? `Choose a fresh word for your rematch with ${s.opponentName || 'your friend'}.`
-      : 'Introduce yourself, then choose the word your friend will try to crack.',
+      : (s.profileName
+        ? 'Choose the word your friend will try to crack. You will get a code to share next.'
+        : 'Introduce yourself, then choose the word your friend will try to crack.'),
     myName: s.myName,
     opponentName: s.opponentName || 'Friend',
     pendingGuess: s.pendingGuess,

@@ -91,6 +91,13 @@ export async function ensureCinqSchema(db: D1Database) {
     )`),
     db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS cinq_player_results_match_player_idx
       ON cinq_player_results (match_code, player_key)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS cinq_players (
+      player_key TEXT PRIMARY KEY,
+      friend_code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )`),
   ]);
   const matchColumns = await db.prepare("PRAGMA table_info(cinq_matches)").all<{ name: string }>();
   const columnNames = new Set((matchColumns.results ?? []).map((column) => column.name));
@@ -159,6 +166,65 @@ export function createPlayerToken() {
   return randomText(48, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
 }
 
+export const FRIEND_CODE_LENGTH = 6;
+
+export function createFriendCode() {
+  return randomText(FRIEND_CODE_LENGTH, CODE_ALPHABET);
+}
+
+export function normalizeFriendCode(value: unknown) {
+  return typeof value === "string"
+    ? value.trim().toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, FRIEND_CODE_LENGTH)
+    : "";
+}
+
+export type PlayerRow = {
+  player_key: string;
+  friend_code: string;
+  name: string;
+};
+
+/**
+ * Anonymous player profile: the device's playerKey maps to a short, shareable friend ID
+ * and a fixed display name. No accounts; the key never leaves the device except to prove ownership.
+ */
+export async function upsertPlayer(db: D1Database, playerKey: string, name: string) {
+  const now = new Date().toISOString();
+  const existing = await db.prepare("SELECT player_key, friend_code, name FROM cinq_players WHERE player_key = ?")
+    .bind(playerKey)
+    .first<PlayerRow>();
+  if (existing) {
+    if (name && existing.name !== name) {
+      await db.prepare("UPDATE cinq_players SET name = ?, updated_at = ? WHERE player_key = ?")
+        .bind(name, now, playerKey)
+        .run();
+      return { ...existing, name };
+    }
+    return existing;
+  }
+  if (!name) return null;
+  for (let tries = 0; tries < 6; tries += 1) {
+    const friendCode = createFriendCode();
+    const result = await db.prepare(`INSERT OR IGNORE INTO cinq_players
+      (player_key, friend_code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+      .bind(playerKey, friendCode, name, now, now)
+      .run();
+    if ((result.meta.changes ?? 0) === 1) return { player_key: playerKey, friend_code: friendCode, name };
+    // Lost a race for this playerKey, or the friend code collided: re-check, else retry with a new code.
+    const raced = await db.prepare("SELECT player_key, friend_code, name FROM cinq_players WHERE player_key = ?")
+      .bind(playerKey)
+      .first<PlayerRow>();
+    if (raced) return raced;
+  }
+  return null;
+}
+
+export async function getPlayerByFriendCode(db: D1Database, friendCode: string) {
+  return db.prepare("SELECT player_key, friend_code, name FROM cinq_players WHERE friend_code = ?")
+    .bind(friendCode)
+    .first<PlayerRow>();
+}
+
 export async function getMatch(db: D1Database, code: string) {
   return db.prepare("SELECT * FROM cinq_matches WHERE code = ?")
     .bind(code)
@@ -187,6 +253,12 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
     "SELECT word FROM cinq_pending_guesses WHERE match_code = ? AND player = ?",
   ).bind(match.code, role).first<{ word: string }>();
   const shape = (row: GuessRow) => ({ word: row.word, count: row.match_count });
+  const opponentKey = role === 1 ? match.player2_key : match.player1_key;
+  const opponentPlayer = opponentKey
+    ? await db.prepare("SELECT friend_code FROM cinq_players WHERE player_key = ?")
+      .bind(opponentKey)
+      .first<{ friend_code: string }>()
+    : null;
 
   return {
     code: match.code,
@@ -198,6 +270,7 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
     opponentJoined: Boolean(match.player2_token),
     yourName: yourName || "Player",
     opponentName: opponentName || null,
+    opponentFriendCode: opponentPlayer?.friend_code ?? null,
     yourSecret,
     opponentSecret: match.status === "finished" ? opponentSecret : null,
     yourGuesses: rows.filter((row) => row.player === role).map(shape),

@@ -5,6 +5,9 @@ import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
+import {
+  loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
+} from './friends.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
 const GUESS_SET = new Set(GUESS_WORDS);
@@ -45,6 +48,7 @@ function storeMatchSummary(match, token) {
     token,
     yourName: match.yourName || 'Player',
     friendName: match.opponentName || 'Waiting for friend',
+    friendCode: match.opponentFriendCode || '',
     status: match.status,
     yourTurn: match.yourTurn,
     pendingGuess: match.pendingGuess || '',
@@ -71,6 +75,8 @@ const initialState = {
   playerStats: null, playerStatsLoading: false, shareFeedback: '',
   matchBusy: false, inviteCopied: false, dailyStats: null, dailyStatsLoading: false,
   showStats: false, shareCopiedDate: null,
+  profileName: '', friendCode: '', profileNameInput: '', profileEditing: false, profileBusy: false,
+  friends: [], friendInput: '', friendError: '', friendBusy: false, friendIdCopied: false,
 };
 
 function savedState(next) {
@@ -152,8 +158,14 @@ export function useCinq() {
       const acceptedQueue = sameMatch && match.pendingGuess && match.pendingGuess !== previous.pendingGuess;
       let savedMatches = previous.savedMatches;
       try { savedMatches = storeMatchSummary(match, token); } catch { /* optional device index */ }
+      let friends = previous.friends;
+      if (match.opponentFriendCode && match.opponentName) {
+        friends = upsertFriend(previous.friends, { friendCode: match.opponentFriendCode, name: match.opponentName });
+        if (friends !== previous.friends) saveFriends(friends);
+      }
       return {
         ...base,
+        friends,
         screen: 'game', mode: 'rival',
         matchCode: match.code, playerToken: token,
         matchStatus: match.status, playerRole: match.role,
@@ -223,20 +235,76 @@ export function useCinq() {
     }
   }, [set]);
 
+  // Creates/renames this device's anonymous profile and stores the friend ID the server returns.
+  const registerProfile = useCallback(async (name) => {
+    const cleaned = name.replace(/\s+/g, ' ').trim().slice(0, 24);
+    if (!cleaned) return null;
+    set({ profileBusy: true, error: '' });
+    try {
+      const data = await jsonRequest('/api/players', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: cleaned, playerKey: playerProfileKey() }),
+      });
+      saveProfile({ name: data.name, friendCode: data.friendCode });
+      localStorage.setItem(LAST_NAME_KEY, data.name);
+      set({
+        profileName: data.name, friendCode: data.friendCode,
+        profileNameInput: '', profileEditing: false, profileBusy: false,
+      });
+      return data;
+    } catch (error) {
+      set({ profileBusy: false, error: error.message });
+      return null;
+    }
+  }, [set]);
+
+  const addFriendByCode = useCallback(async (rawCode) => {
+    const code = normalizeFriendCode(rawCode);
+    if (code.length !== 6) { set({ friendError: 'Friend IDs are 6 characters' }); return; }
+    if (code === stateRef.current.friendCode) { set({ friendError: 'That is your own friend ID' }); return; }
+    set({ friendBusy: true, friendError: '' });
+    try {
+      const data = await jsonRequest(`/api/players/${code}`);
+      set((previous) => {
+        const friends = upsertFriend(previous.friends, { friendCode: data.friendCode, name: data.name });
+        saveFriends(friends);
+        return { ...previous, friends, friendInput: '', friendBusy: false, friendError: '' };
+      });
+    } catch (error) {
+      set({ friendBusy: false, friendError: error.message });
+    }
+  }, [set]);
+
   useEffect(() => {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem('cinq-game-v3') || 'null'); } catch { /* ignore */ }
     if (saved?.mode === 'daily' && saved.dailyDate !== todayKey()) saved = null;
     const savedMatches = loadSavedMatches();
-    if (saved) setState((previous) => ({ ...previous, ...saved, savedMatches }));
-    else setState((previous) => ({ ...previous, savedMatches }));
+    const profile = loadProfile();
+    const friends = loadFriends();
+    const profileFields = { profileName: profile.name, friendCode: profile.friendCode, friends };
+    if (saved) setState((previous) => ({ ...previous, ...saved, savedMatches, ...profileFields }));
+    else setState((previous) => ({ ...previous, savedMatches, ...profileFields }));
     loadPlayerStats();
 
-    const inviteCode = new URLSearchParams(window.location.search).get('join');
+    // Players who already picked a name in an earlier version get a friend ID without retyping it.
+    const legacyName = profile.name || localStorage.getItem(LAST_NAME_KEY) || '';
+    if (legacyName && !profile.friendCode) registerProfile(legacyName);
+
+    const params = new URLSearchParams(window.location.search);
+    const friendParam = normalizeFriendCode(params.get('friend'));
+    if (friendParam) {
+      setState((previous) => ({ ...previous, screen: 'multiplayer', mode: 'rival', error: '' }));
+      addFriendByCode(friendParam);
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+    const inviteCode = params.get('join');
     if (inviteCode) {
       setState((previous) => ({
         ...previous,
-        screen: 'rivalLobby', mode: 'rival',
+        screen: 'multiplayer', mode: 'rival',
         joinCode: inviteCode.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8),
         error: '',
       }));
@@ -247,7 +315,7 @@ export function useCinq() {
     } else if (saved?.mode === 'daily' && saved.result && saved.dailyDate) {
       loadDailyStats(saved.dailyDate, saved.result.n, true);
     }
-  }, [loadDailyStats, loadPlayerStats, syncMatch]);
+  }, [addFriendByCode, loadDailyStats, loadPlayerStats, registerProfile, syncMatch]);
 
   useEffect(() => {
     if (state.screen !== 'game' || state.mode !== 'rival' || !state.matchCode || !state.playerToken) return undefined;
@@ -278,7 +346,7 @@ export function useCinq() {
     state.matchCode, state.playerToken, applyMatch, syncMatch]);
 
   useEffect(() => {
-    if (state.screen !== 'home' && state.screen !== 'friends') return undefined;
+    if (state.screen !== 'home' && state.screen !== 'multiplayer') return undefined;
     if (state.savedMatches.length === 0 && state.screen === 'home') return undefined;
     refreshSavedMatches();
     const timer = window.setInterval(refreshSavedMatches, 8000);
@@ -313,13 +381,17 @@ export function useCinq() {
   }, [set]);
 
   const startRival = useCallback(() => {
-    set({ ...freshRound(), screen: 'rivalLobby', mode: 'rival', joinCode: stateRef.current.joinCode || '' });
+    set({
+      ...freshRound(), screen: 'multiplayer', mode: 'rival', joinCode: stateRef.current.joinCode || '',
+      savedMatches: loadSavedMatches(),
+    });
   }, [set]);
 
-  const beginCreateMatch = useCallback(() => {
+  const beginCreateMatch = useCallback((opponentName = '') => {
     set({
       ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'create',
-      setupName: localStorage.getItem(LAST_NAME_KEY) || '',
+      setupName: stateRef.current.profileName || localStorage.getItem(LAST_NAME_KEY) || '',
+      opponentName: typeof opponentName === 'string' ? opponentName : '',
     });
   }, [set]);
 
@@ -328,7 +400,7 @@ export function useCinq() {
     if (code.length !== 8) { set({ error: 'Enter the 8-character match code' }); return; }
     set({
       ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'join', joinCode: code,
-      setupName: localStorage.getItem(LAST_NAME_KEY) || '',
+      setupName: stateRef.current.profileName || localStorage.getItem(LAST_NAME_KEY) || '',
     });
   }, [set]);
 
@@ -337,7 +409,7 @@ export function useCinq() {
     if (current.mode !== 'rival' || current.matchStatus !== 'finished') return;
     set({
       ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'rematch',
-      setupName: current.myName || localStorage.getItem(LAST_NAME_KEY) || '',
+      setupName: current.profileName || current.myName || localStorage.getItem(LAST_NAME_KEY) || '',
       rematchSourceCode: current.matchCode, rematchSourceToken: current.playerToken,
       opponentName: current.opponentName,
     });
@@ -360,18 +432,69 @@ export function useCinq() {
     syncMatch(matchCode, playerToken, false);
   }, [set, syncMatch]);
 
-  const goFriends = useCallback(() => {
-    set({ screen: 'friends', savedMatches: loadSavedMatches() });
+  const setFriendInput = useCallback((value) => {
+    set({ friendInput: normalizeFriendCode(value), friendError: '' });
+  }, [set]);
+
+  const addFriend = useCallback(() => addFriendByCode(stateRef.current.friendInput), [addFriendByCode]);
+
+  const dropFriend = useCallback((friendCode) => {
+    set((previous) => {
+      const friends = removeFriend(previous.friends, friendCode);
+      saveFriends(friends);
+      return { ...previous, friends };
+    });
+  }, [set]);
+
+  const setProfileNameInput = useCallback((value) => {
+    set({ profileNameInput: value.replace(/\s+/g, ' ').slice(0, 24), error: '' });
+  }, [set]);
+
+  const saveProfileName = useCallback(() => {
+    const current = stateRef.current;
+    const name = current.profileNameInput.trim();
+    if (!name) { set({ error: 'Enter your name' }); return; }
+    registerProfile(name);
+  }, [registerProfile, set]);
+
+  const editProfile = useCallback(() => {
+    set((previous) => ({ ...previous, profileEditing: true, profileNameInput: previous.profileName }));
+  }, [set]);
+
+  const cancelEditProfile = useCallback(() => set({ profileEditing: false, profileNameInput: '' }), [set]);
+
+  const shareFriendId = useCallback(async () => {
+    const code = stateRef.current.friendCode;
+    if (!code) return;
+    const link = `${window.location.origin}${window.location.pathname}?friend=${code}`;
+    const text = `Add me on ${APP_NAME}! My friend ID is ${code}.\n${link}`;
+    try {
+      if (navigator.share) await navigator.share({ title: APP_NAME, text });
+      else await navigator.clipboard.writeText(text);
+      set({ friendIdCopied: true });
+      window.setTimeout(() => set({ friendIdCopied: false }), 1800);
+    } catch (error) {
+      if (error?.name !== 'AbortError') set({ error: `Your friend ID is ${code}` });
+    }
   }, [set]);
 
   const startRematchFrom = useCallback((code, token, opponentName) => {
     set({
       ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'rematch',
-      setupName: stateRef.current.myName || localStorage.getItem(LAST_NAME_KEY) || '',
+      setupName: stateRef.current.profileName || stateRef.current.myName || localStorage.getItem(LAST_NAME_KEY) || '',
       rematchSourceCode: code, rematchSourceToken: token,
       opponentName: opponentName || '',
     });
   }, [set]);
+
+  // Rematch the last finished game with this friend, or start a fresh match to send them.
+  const challengeFriend = useCallback((friend) => {
+    if (friend.rematchMatch) {
+      startRematchFrom(friend.rematchMatch.code, friend.rematchMatch.token, friend.friendName);
+    } else {
+      beginCreateMatch(friend.friendName);
+    }
+  }, [beginCreateMatch, startRematchFrom]);
 
   const openStats = useCallback(() => set({ showStats: true }), [set]);
   const closeStats = useCallback(() => set({ showStats: false }), [set]);
@@ -471,6 +594,7 @@ export function useCinq() {
             }),
           });
           applyMatch(data.match, data.token);
+          if (!current.profileName || !current.friendCode) registerProfile(current.setupName);
         } catch (error) {
           set({ matchBusy: false, error: error.message });
         }
@@ -517,7 +641,7 @@ export function useCinq() {
       return;
     }
     set({ myGuesses, input: '', error: '' });
-  }, [applyMatch, commitPending, loadDailyStats, set]);
+  }, [applyMatch, commitPending, loadDailyStats, registerProfile, set]);
 
   const playAgain = useCallback(() => {
     const current = stateRef.current;
@@ -599,17 +723,23 @@ export function useCinq() {
     const handle = CapApp.addListener('appUrlOpen', ({ url }) => {
       try {
         const u = new URL(url);
+        const friendCode = normalizeFriendCode(u.searchParams.get('friend'));
+        if (friendCode) {
+          set({ screen: 'multiplayer', mode: 'rival', error: '', savedMatches: loadSavedMatches() });
+          addFriendByCode(friendCode);
+          return;
+        }
         const code = u.searchParams.get('join');
         if (!code) return;
         set({
-          screen: 'rivalLobby', mode: 'rival',
+          screen: 'multiplayer', mode: 'rival',
           joinCode: code.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8),
           error: '',
         });
       } catch { /* ignore malformed URLs */ }
     });
     return () => { handle.then((h) => h.remove()); };
-  }, [set]);
+  }, [addFriendByCode, set]);
 
   useEffect(() => {
     const onKey = (event) => {
@@ -628,13 +758,17 @@ export function useCinq() {
 
   const actions = useMemo(() => ({
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
-    setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
+    setJoinCode, setSetupName, resumeRival, goHome, startRematchFrom,
+    setFriendInput, addFriend, dropFriend, challengeFriend, shareFriendId,
+    setProfileNameInput, saveProfileName, editProfile, cancelEditProfile,
     openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
     shareHistoryItem,
   }), [
     startDaily, startSolo, startRival, beginCreateMatch, beginJoinMatch, beginRematch,
-    setJoinCode, setSetupName, resumeRival, goHome, goFriends, startRematchFrom,
+    setJoinCode, setSetupName, resumeRival, goHome, startRematchFrom,
+    setFriendInput, addFriend, dropFriend, challengeFriend, shareFriendId,
+    setProfileNameInput, saveProfileName, editProfile, cancelEditProfile,
     openStats, closeStats, tapLetter, backspace, tapTool,
     removeGroup, action, playAgain, setView, reviewResult, showResults, copyInvite, shareResult,
     shareHistoryItem,
