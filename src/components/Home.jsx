@@ -5,6 +5,7 @@ export function Home({ vals, actions }) {
       <div className="home-blurb">
         Guess the secret five-letter word. Every guess earns a count &mdash; how many of its letters are in the word.
       </div>
+      <button className="home-help-btn hoverable" onClick={actions.openHowTo}>HOW TO PLAY</button>
 
       <button
         className={`mode-card card-hoverable ${vals.dailyComplete ? 'daily-card' : 'plain-card'}`}

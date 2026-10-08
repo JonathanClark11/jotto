@@ -847,3 +847,68 @@ button {
   flex: none;
   margin-top: 0;
 }
+
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(28, 27, 24, .55);
+}
+
+.intro-card {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  background: #F1EFE9;
+  border-radius: 12px;
+  padding: 36px 24px 24px;
+  text-align: center;
+}
+
+.intro-skip {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: #8B877D;
+  cursor: pointer;
+}
+
+.intro-title { font-size: 20px; font-weight: 700; color: #1C1B18; padding-bottom: 10px; }
+.intro-body { font-size: 15px; line-height: 1.55; color: #55524A; min-height: 96px; }
+.intro-dots { display: flex; gap: 6px; justify-content: center; padding: 12px 0; }
+.intro-dot { width: 7px; height: 7px; border-radius: 50%; background: #D5D1C7; }
+.intro-dot.on { background: #0E7C86; }
+
+.intro-next {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #1C1B18;
+  color: #F1EFE9;
+  font-weight: 700;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+
+.home-help-btn {
+  display: block;
+  margin: 0 auto 12px;
+  background: none;
+  border: 1.5px solid #D5D1C7;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 11px;
+  letter-spacing: .1em;
+  color: #55524A;
+  cursor: pointer;
+}
