@@ -3,11 +3,14 @@ import test, { beforeEach } from 'node:test';
 import './helpers/route-hooks.mjs';
 import { createFakeD1 } from './helpers/fakeD1.mjs';
 import { WORDS } from '../src/data/words.js';
+import { TURN_EXPIRY_MS } from '../src/config.js';
 
 globalThis.__cinqTestEnv = {};
+const { turnExpiry } = await import('../app/api/_shared/cinq-db.ts');
 const create = await import('../app/api/matches/route.ts');
 const join = await import('../app/api/matches/[code]/join/route.ts');
 const guess = await import('../app/api/matches/[code]/guess/route.ts');
+const matchGet = await import('../app/api/matches/[code]/route.ts');
 const rematch = await import('../app/api/matches/[code]/rematch/route.ts');
 
 const [SECRET1, SECRET2, WORD_A, WORD_B] = WORDS.filter((_, i) => i % 97 === 0).slice(0, 4);
@@ -156,4 +159,48 @@ test('rematch: validation, token and status checks', async () => {
   assert.equal(second.json.match.code, first.json.match.code);
   const late = await call(rematch.POST, { token: t2, name: 'Bob', secret: SECRET2, playerKey: 'player-key-0003' }, code);
   assert.equal(late.status, 409);
+});
+
+const backdate = (code, ms) => db.sqlite.prepare('UPDATE cinq_matches SET updated_at = ? WHERE code = ?')
+  .run(new Date(Date.now() - ms).toISOString(), code);
+
+test('guess: overdue match is 409 expired when enabled, accepted when disabled', async () => {
+  const { code, t1 } = await activeMatch();
+  backdate(code, TURN_EXPIRY_MS + 60_000);
+  const off = await call(guess.POST, { token: t1, word: WORD_A }, code);
+  assert.equal(off.status, 200);
+  const second = await activeMatch();
+  backdate(second.code, TURN_EXPIRY_MS + 60_000);
+  turnExpiry.enabled = true;
+  try {
+    const on = await call(guess.POST, { token: second.t1, word: WORD_A }, second.code);
+    assert.equal(on.status, 409);
+    assert.equal(on.json.error, 'This match has expired');
+    const queued = await call(guess.POST, { token: second.t2, word: WORD_B }, second.code);
+    assert.equal(queued.status, 409);
+    assert.equal(db.sqlite.prepare('SELECT COUNT(*) AS n FROM cinq_pending_guesses').get().n, 0);
+    assert.equal(db.sqlite.prepare('SELECT winner FROM cinq_matches WHERE code = ?').get(second.code).winner, 2);
+  } finally {
+    turnExpiry.enabled = false;
+  }
+});
+
+test('match GET: settles an overdue match when enabled and reports expired', async () => {
+  const { code, t1 } = await activeMatch();
+  backdate(code, TURN_EXPIRY_MS + 60_000);
+  const get = () => matchGet.GET(new Request('http://test/api', { headers: { 'x-cinq-player': t1 } }), ctx(code))
+    .then(async (res) => ({ status: res.status, json: await res.json() }));
+  const off = await get();
+  assert.equal(off.json.match.status, 'active');
+  assert.equal(off.json.match.expired, false);
+  assert.ok(off.json.match.turnDeadline);
+  turnExpiry.enabled = true;
+  try {
+    const on = await get();
+    assert.equal(on.json.match.status, 'finished');
+    assert.equal(on.json.match.winner, 2);
+    assert.equal(on.json.match.expired, true);
+  } finally {
+    turnExpiry.enabled = false;
+  }
 });

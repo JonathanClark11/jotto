@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { TURN_EXPIRY_ENABLED, TURN_EXPIRY_MS } from "../../../src/config.js";
 import { GUESS_WORDS } from "../../../src/data/guessWords.js";
 import { WORDS } from "../../../src/data/words.js";
 
@@ -239,6 +240,46 @@ export async function getMatch(db: D1Database, code: string) {
     .first<MatchRow>();
 }
 
+// Mutable so tests can flip the flag; production reads the constant from src/config.js.
+export const turnExpiry = { enabled: TURN_EXPIRY_ENABLED };
+
+/** Epoch ms when the player on turn forfeits, or null if the match is not active. updated_at is the turn start. */
+export function turnDeadline(match: MatchRow): number | null {
+  if (match.status !== "active") return null;
+  const started = Date.parse(match.updated_at);
+  return Number.isNaN(started) ? null : started + TURN_EXPIRY_MS;
+}
+
+/**
+ * Settles an active match whose turn deadline has passed: the non-turn player wins. No-op while
+ * turnExpiry.enabled is false. The guarded UPDATE loses to a guess that bumped updated_at first.
+ * Returns the refreshed row (or the original if nothing changed).
+ */
+export async function expireIfOverdue(
+  db: D1Database,
+  match: MatchRow,
+  now: number = Date.now(),
+): Promise<MatchRow> {
+  if (!turnExpiry.enabled) return match;
+  const deadline = turnDeadline(match);
+  if (deadline === null || now <= deadline) return match;
+  const nowIso = new Date(now).toISOString();
+  const winner = match.current_turn === 1 ? 2 : 1;
+  const result = await db.prepare(`UPDATE cinq_matches
+    SET status = 'finished', winner = ?, updated_at = ?
+    WHERE code = ? AND status = 'active' AND current_turn = ? AND updated_at = ?`)
+    .bind(winner, nowIso, match.code, match.current_turn, match.updated_at)
+    .run();
+  const settledHere = (result.meta.changes ?? 0) === 1;
+  const fresh = (await getMatch(db, match.code)) ?? match;
+  if (settledHere) {
+    await db.prepare("DELETE FROM cinq_pending_guesses WHERE match_code = ?").bind(match.code).run();
+  }
+  // recordPlayerResults is INSERT OR IGNORE, so also covers a settle whose follow-up writes were interrupted.
+  if (fresh.status === "finished") await recordPlayerResults(db, fresh, fresh.updated_at);
+  return fresh;
+}
+
 export function playerRole(match: MatchRow, token: string) {
   if (token === match.player1_token) return 1;
   if (token && token === match.player2_token) return 2;
@@ -268,6 +309,12 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
       .first<{ friend_code: string }>()
     : null;
 
+  const deadline = turnDeadline(match);
+  // No schema flag for forfeits: a finished match is expired when the winner never guessed the loser's secret.
+  const loserSecret = match.winner === 1 ? match.player2_secret : match.player1_secret;
+  const expired = match.status === "finished" && Boolean(match.winner)
+    && !rows.some((row) => row.player === match.winner && row.word === loserSecret);
+
   return {
     code: match.code,
     status: match.status,
@@ -286,6 +333,8 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
     pendingGuess: pending?.word ?? null,
     rematchCode: match.status === "finished" ? match.rematch_code : null,
     updatedAt: match.updated_at,
+    turnDeadline: deadline === null ? null : new Date(deadline).toISOString(),
+    expired,
   };
 }
 
