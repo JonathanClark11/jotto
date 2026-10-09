@@ -1,3 +1,4 @@
+import { TURN_EXPIRY_ENABLED, TURN_EXPIRY_MS, TURN_WARN_DAYS } from '../config.js';
 import { buildFriendList, friendKey, headToHead, matchesForFriend } from './friends.js';
 import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory, computeLocalStats, puzzleNumber } from './logic.js';
 
@@ -19,11 +20,48 @@ function formatLastPlayed(isoString) {
   }
 }
 
+const DAY_MS = 86400000;
+
+// Whole days left on the turn clock (updatedAt is the turn start), or null when updatedAt is missing/invalid.
+function turnMsLeft(updatedAt, now) {
+  if (!updatedAt) return null;
+  const started = Date.parse(updatedAt);
+  return Number.isNaN(started) ? null : started + TURN_EXPIRY_MS - now;
+}
+
+export function formatTimeLeft(updatedAt, now = Date.now()) {
+  const ms = turnMsLeft(updatedAt, now);
+  if (ms === null) return '';
+  if (ms <= 0) return 'EXPIRED';
+  const days = Math.floor(ms / DAY_MS);
+  if (days >= 2) return days + ' DAYS LEFT';
+  return days === 1 ? '1 DAY LEFT' : 'LESS THAN A DAY LEFT';
+}
+
+// The warning threshold (from TURN_WARN_DAYS) the clock has reached, or null while there is no warning yet.
+export function turnWarnLevel(updatedAt, now = Date.now()) {
+  const ms = turnMsLeft(updatedAt, now);
+  if (ms === null) return null;
+  const days = Math.max(0, Math.floor(ms / DAY_MS));
+  const reached = TURN_WARN_DAYS.filter((t) => days <= t);
+  return reached.length ? Math.min(...reached) : null;
+}
+
+function opponentTimeLine(updatedAt, now, name) {
+  const ms = turnMsLeft(updatedAt, now);
+  if (ms === null || ms <= 0) return '';
+  const days = Math.floor(ms / DAY_MS);
+  const span = days >= 2 ? days + ' days' : (days === 1 ? '1 day' : 'less than a day');
+  return `${name} has ${span} to play`;
+}
+
 // Pure translation of game state -> everything the screens need to render.
 // Mirrors the Claude Design prototype's renderVals(), so every visual rule
 // (colors, badge math, auto-cross-out logic) stays exactly as designed.
-export function deriveView(state, actions, secretList, showWordsLeft) {
+export function deriveView(state, actions, secretList, showWordsLeft, opts = {}) {
   const s = state;
+  const expiryOn = opts.expiryEnabled ?? TURN_EXPIRY_ENABLED;
+  const now = opts.now ?? Date.now();
   const autoE = autoElim(s.myGuesses, s.marks);
   const isHome = s.screen === 'home', isSetup = s.screen === 'setup';
   const isMultiplayer = s.screen === 'multiplayer', isGame = s.screen === 'game';
@@ -274,6 +312,9 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
       if (m.status === 'waiting') statusLabel = 'WAITING FOR FRIEND';
       else if (m.yourTurn) statusLabel = 'YOUR TURN';
       else if (m.pendingGuess) statusLabel = 'GUESS QUEUED';
+      if (expiryOn && m.status === 'active' && turnWarnLevel(m.updatedAt, now) !== null) {
+        statusLabel += ' · ' + formatTimeLeft(m.updatedAt, now);
+      }
       return { ...m, statusLabel };
     })
     .sort((a, b) => {
@@ -304,6 +345,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
         const won = finished && m.winner === m.role;
         let resultLabel = 'IN PROGRESS';
         if (finished) resultLabel = won ? 'WIN' : 'LOSS';
+        if (finished && expiryOn && m.forfeit) resultLabel += ' (FORFEIT)';
         const counts = (finished && m.yourCount && m.theirCount)
           ? `You ${m.yourCount} · ${entry.friendName} ${m.theirCount}` : '';
         return {
@@ -314,7 +356,28 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     };
   }
 
+  // Turn countdown for the in-game banner. Null unless the flag is on and this is an active match with a turn clock.
+  let turnBanner = null, turnToast = null;
+  if (expiryOn && isRival && s.matchStatus === 'active' && formatTimeLeft(s.matchUpdatedAt, now)) {
+    const left = formatTimeLeft(s.matchUpdatedAt, now);
+    const level = turnWarnLevel(s.matchUpdatedAt, now);
+    const expired = left === 'EXPIRED';
+    if (s.yourTurn) {
+      turnBanner = {
+        text: 'YOUR TURN · ' + left + (level !== null && !expired ? ' · PLAY OR FORFEIT' : ''),
+        level: level === null ? '' : (level <= Math.min(...TURN_WARN_DAYS) ? 'urgent' : 'warn'),
+        sub: '',
+      };
+      if (level !== null && !expired) {
+        turnToast = { key: s.matchCode + ':' + level, text: left + ' to play your turn or you forfeit.' };
+      }
+    } else {
+      turnBanner = { text: 'NOT YOUR TURN', level: '', sub: opponentTimeLine(s.matchUpdatedAt, now, s.opponentName || 'Friend') };
+    }
+  }
+
   return {
+    turnBanner, turnToast,
     isHome, isSetup, isMultiplayer, isFriendDetail, isGame, isDuel, isRival, friendDetail,
     showStats: s.showStats, hasDailyHistory: hist.length > 0,
     localStats, localHistory,

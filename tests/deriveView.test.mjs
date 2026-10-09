@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test, { beforeEach } from 'node:test';
-import { deriveView } from '../src/game/deriveView.js';
+import { deriveView, formatTimeLeft, turnWarnLevel } from '../src/game/deriveView.js';
 import { todayKey } from '../src/game/logic.js';
 
 // deriveView reads daily history from localStorage; stub it for node.
@@ -446,4 +446,114 @@ test('setup copy depends on profile and rematch intent', () => {
   assert.match(view(makeState({ screen: 'setup', setupIntent: 'rematch' })).setupBlurb, /your friend/);
   assert.equal(view(makeState({ rematchCode: 'XYZ' })).rematchLabel, 'JOIN REMATCH');
   assert.equal(view(makeState()).rematchLabel, 'REMATCH');
+});
+
+// --- turn countdown, warnings and forfeit labels (issue #44) ---
+const DAY = 86400000;
+const NOW = Date.parse('2026-10-20T12:00:00Z');
+const startedAgo = (ms) => new Date(NOW - ms).toISOString();
+const on = { expiryEnabled: true, now: NOW };
+const viewAt = (state, opts = on) => deriveView(state, actions, [], false, opts);
+const rivalState = (o = {}) => makeState({
+  mode: 'rival', matchStatus: 'active', matchCode: 'ABCD1234', yourTurn: true,
+  opponentName: 'Sam', matchUpdatedAt: startedAgo(0), ...o,
+});
+
+test('formatTimeLeft labels and boundaries', () => {
+  assert.equal(formatTimeLeft(startedAgo(0), NOW), '14 DAYS LEFT');
+  assert.equal(formatTimeLeft(startedAgo(11 * DAY + 1), NOW), '2 DAYS LEFT');
+  assert.equal(formatTimeLeft(startedAgo(12 * DAY), NOW), '2 DAYS LEFT');
+  assert.equal(formatTimeLeft(startedAgo(12 * DAY + 1), NOW), '1 DAY LEFT');
+  assert.equal(formatTimeLeft(startedAgo(13 * DAY), NOW), '1 DAY LEFT');
+  assert.equal(formatTimeLeft(startedAgo(13 * DAY + 1), NOW), 'LESS THAN A DAY LEFT');
+  assert.equal(formatTimeLeft(startedAgo(14 * DAY - 1), NOW), 'LESS THAN A DAY LEFT');
+  assert.equal(formatTimeLeft(startedAgo(14 * DAY), NOW), 'EXPIRED');
+  assert.equal(formatTimeLeft(startedAgo(20 * DAY), NOW), 'EXPIRED');
+  assert.equal(formatTimeLeft('', NOW), '');
+  assert.equal(formatTimeLeft('garbage', NOW), '');
+});
+
+test('turnWarnLevel flips at the 3 day and 1 day thresholds', () => {
+  assert.equal(turnWarnLevel(startedAgo(10 * DAY), NOW), null); // exactly 4 days left
+  assert.equal(turnWarnLevel(startedAgo(10 * DAY + 1), NOW), 3);
+  assert.equal(turnWarnLevel(startedAgo(12 * DAY + 1), NOW), 1);
+  assert.equal(turnWarnLevel(startedAgo(15 * DAY), NOW), 1);
+  assert.equal(turnWarnLevel(undefined, NOW), null);
+});
+
+test('banner on your turn shows days left and escalates', () => {
+  let b = viewAt(rivalState()).turnBanner;
+  assert.equal(b.text, 'YOUR TURN · 14 DAYS LEFT');
+  assert.equal(b.level, '');
+  assert.equal(viewAt(rivalState()).turnToast, null);
+
+  const warn = viewAt(rivalState({ matchUpdatedAt: startedAgo(11 * DAY - 1) }));
+  assert.equal(warn.turnBanner.text, 'YOUR TURN · 3 DAYS LEFT · PLAY OR FORFEIT');
+  assert.equal(warn.turnBanner.level, 'warn');
+  assert.deepEqual(warn.turnToast.key, 'ABCD1234:3');
+
+  const urgent = viewAt(rivalState({ matchUpdatedAt: startedAgo(13 * DAY + 5) }));
+  assert.equal(urgent.turnBanner.text, 'YOUR TURN · LESS THAN A DAY LEFT · PLAY OR FORFEIT');
+  assert.equal(urgent.turnBanner.level, 'urgent');
+  assert.equal(urgent.turnToast.key, 'ABCD1234:1');
+
+  const expired = viewAt(rivalState({ matchUpdatedAt: startedAgo(15 * DAY) }));
+  assert.equal(expired.turnBanner.text, 'YOUR TURN · EXPIRED');
+  assert.equal(expired.turnToast, null);
+});
+
+test('banner on opponent turn shows a small time line', () => {
+  const b = viewAt(rivalState({ yourTurn: false, matchUpdatedAt: startedAgo(2 * DAY) })).turnBanner;
+  assert.equal(b.text, 'NOT YOUR TURN');
+  assert.equal(b.sub, 'Sam has 12 days to play');
+  const one = viewAt(rivalState({ yourTurn: false, matchUpdatedAt: startedAgo(12 * DAY + 1) })).turnBanner;
+  assert.equal(one.sub, 'Sam has 1 day to play');
+  const less = viewAt(rivalState({ yourTurn: false, matchUpdatedAt: startedAgo(13 * DAY + 1) })).turnBanner;
+  assert.equal(less.sub, 'Sam has less than a day to play');
+  assert.equal(viewAt(rivalState({ yourTurn: false })).turnToast, null);
+});
+
+test('no countdown for non-active matches or missing updatedAt', () => {
+  assert.equal(viewAt(rivalState({ matchStatus: 'waiting' })).turnBanner, null);
+  assert.equal(viewAt(rivalState({ matchStatus: 'finished' })).turnBanner, null);
+  assert.equal(viewAt(rivalState({ matchUpdatedAt: '' })).turnBanner, null);
+  assert.equal(viewAt(makeState()).turnBanner, null);
+});
+
+test('everything is hidden when TURN_EXPIRY_ENABLED is false', () => {
+  const off = { expiryEnabled: false, now: NOW };
+  const old = startedAgo(13 * DAY + 5);
+  const v = viewAt(rivalState({
+    matchUpdatedAt: old,
+    savedMatches: [{ code: 'ABCD1234', token: 't', friendName: 'Sam', status: 'active', yourTurn: true, role: 1, updatedAt: old }],
+  }), off);
+  assert.equal(v.turnBanner, null);
+  assert.equal(v.turnToast, null);
+  assert.equal(v.activeFriendGames[0].statusLabel, 'YOUR TURN');
+  // default (no opts) follows the config constant, which ships false
+  assert.equal(deriveView(rivalState({ matchUpdatedAt: old }), actions, [], false).turnBanner, null);
+});
+
+test('friend cards append time left only at or under the first threshold', () => {
+  const card = (ago, extra = {}) => viewAt(makeState({
+    savedMatches: [{ code: 'AAAA1111', token: 't', friendName: 'Sam', status: 'active', yourTurn: true, role: 1, updatedAt: startedAgo(ago), ...extra }],
+  })).activeFriendGames[0].statusLabel;
+  assert.equal(card(5 * DAY), 'YOUR TURN');
+  assert.equal(card(10 * DAY), 'YOUR TURN');
+  assert.equal(card(10 * DAY + 1), 'YOUR TURN · 3 DAYS LEFT');
+  assert.equal(card(13 * DAY + 5), 'YOUR TURN · LESS THAN A DAY LEFT');
+  assert.equal(card(11 * DAY, { yourTurn: false }), 'NOT YOUR TURN · 3 DAYS LEFT');
+  assert.equal(card(11 * DAY, { status: 'waiting', yourTurn: false }), 'WAITING FOR FRIEND');
+});
+
+test('friend history shows forfeit labels only when flagged and enabled', () => {
+  const friend = { friendName: 'Sam', friendCode: 'SAM1' };
+  const mk = (extra) => ({ code: 'M1', token: 't', friendName: 'Sam', friendCode: 'SAM1', status: 'finished', role: 1, winner: 1, updatedAt: startedAgo(DAY), ...extra });
+  const label = (matches, opts = on) => viewAt(makeState({
+    screen: 'friend', selectedFriend: friend, friends: [{ friendCode: 'SAM1', name: 'Sam' }], savedMatches: matches,
+  }), opts).friendDetail.matches[0].resultLabel;
+  assert.equal(label([mk({})]), 'WIN');
+  assert.equal(label([mk({ forfeit: true })]), 'WIN (FORFEIT)');
+  assert.equal(label([mk({ forfeit: true, winner: 2 })]), 'LOSS (FORFEIT)');
+  assert.equal(label([mk({ forfeit: true })], { expiryEnabled: false, now: NOW }), 'WIN');
 });

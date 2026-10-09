@@ -494,6 +494,34 @@ button {
   color: #0E7C86;
 }
 
+.turn-banner--warn {
+  background: #FFF6E7;
+  color: #8A5F13;
+}
+
+.turn-banner--urgent {
+  background: #FBEAE8;
+  color: #B4443A;
+}
+
+.turn-sub {
+  margin: 4px 2px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8B877D;
+}
+
+.turn-toast {
+  margin: 8px 2px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #1C1B18;
+  color: #FAF9F6;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .turn-code {
   color: inherit;
   letter-spacing: .12em;
