@@ -1,6 +1,7 @@
 import {
   ensureCinqSchema,
   errorResponse,
+  expireIfOverdue,
   getCinqDb,
   getMatch,
   isGuessWord,
@@ -22,10 +23,13 @@ export async function POST(request: Request, context: { params: Promise<{ code: 
   const word = normalizeWord(body.word);
   if (!isGuessWord(word)) return errorResponse("That word is not in the dictionary");
 
-  const match = await getMatch(db, code);
-  if (!match) return errorResponse("Match not found", 404);
-  const role = playerRole(match, token);
+  const found = await getMatch(db, code);
+  if (!found) return errorResponse("Match not found", 404);
+  const role = playerRole(found, token);
   if (!role) return errorResponse("Player token is invalid", 403);
+  const wasActive = found.status === "active";
+  const match = await expireIfOverdue(db, found);
+  if (wasActive && match.status === "finished") return errorResponse("This match has expired", 409);
   if (match.status !== "active") return errorResponse("This match is not active", 409);
 
   const duplicate = await db.prepare(
