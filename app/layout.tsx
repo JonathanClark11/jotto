@@ -19,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${APP_NAME} — Five-Letter Word Guessing Game`,
     description: `Play ${APP_NAME} in Daily, Solo, or turn-based Rival mode, track your stats, and challenge friends.`,
+    other: { "apple-itunes-app": "app-id=6813995313" },
     openGraph: {
       title: `${APP_NAME} — Crack the Five-Letter Word`,
       description: `Challenge a friend, compare results, and climb your ${APP_NAME} stats.`,

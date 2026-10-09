@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useCinq } from './game/useCinq.js';
 import { deriveView } from './game/deriveView.js';
 import { Header } from './components/Header.jsx';
@@ -12,8 +12,10 @@ import { Result } from './components/Result.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 import { Intro } from './components/Intro.jsx';
 import { markIntroSeen, shouldShowIntro } from './game/intro.js';
+import { clientMode } from './game/platform.js';
+import { GetTheApp } from './components/GetTheApp.jsx';
 
-function App() {
+function GameApp() {
   const { state, actions, secretList, showWordsLeft } = useCinq();
   const vals = useMemo(
     () => deriveView(state, actions, secretList, showWordsLeft),
@@ -22,15 +24,10 @@ function App() {
 
   // Intro currently open ('howto' | 'multiplayer' | null). The help button on Home reopens how-to.
   const [introOpen, setIntroOpen] = useState(null);
-  const [howtoChecked, setHowtoChecked] = useState(false);
   const [mpChecked, setMpChecked] = useState(false);
 
-  // First launch: show how-to once on Home. First match start/join: show multiplayer rules once on Setup.
-  // Adjusting state during render is the React-sanctioned way to react to a changed value.
-  if (vals.isHome && !howtoChecked) {
-    setHowtoChecked(true);
-    if (shouldShowIntro('howto')) setIntroOpen('howto');
-  }
+  // How-to-play opens only when the HOW TO PLAY button is pressed. The multiplayer rules show once, the first
+  // time someone starts or joins a match. Adjusting state during render is the React-sanctioned way to react.
   if (vals.isSetup && !mpChecked) {
     setMpChecked(true);
     if (shouldShowIntro('multiplayer')) setIntroOpen('multiplayer');
@@ -63,6 +60,17 @@ function App() {
       {vals.showStats && <StatsPanel vals={vals} actions={actions} />}
     </div>
   );
+}
+
+const subscribeNever = () => () => {};
+
+// The game only runs inside the iOS app. Browsers get the "get the app" page. The server render and the first
+// hydration pass render a blank shell so the native app never flashes the landing page.
+function App() {
+  const mode = useSyncExternalStore(subscribeNever, clientMode, () => 'pending');
+  if (mode === 'pending') return <div className="app-shell" />;
+  if (mode === 'landing') return <GetTheApp />;
+  return <GameApp />;
 }
 
 export default App;
