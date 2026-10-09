@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { looksLikeAppWebview, parseInvite } from '../src/game/platform.js';
+import { buildAppLink, looksLikeAppWebview, parseInvite, parseInviteUrl } from '../src/game/platform.js';
 
 test('parseInvite reads a friend ID from a shared link', () => {
   assert.deepEqual(parseInvite('?friend=w7pxbh'), { kind: 'friend', code: 'W7PXBH' });
@@ -31,4 +31,21 @@ test('looksLikeAppWebview matches an iOS app webview but not Safari or other iOS
   assert.equal(looksLikeAppWebview(instagram), false);
   assert.equal(looksLikeAppWebview(desktop), false);
   assert.equal(looksLikeAppWebview(''), false);
+});
+
+test('buildAppLink makes a cinqle:// link that parseInviteUrl reads back', () => {
+  assert.equal(buildAppLink({ kind: 'friend', code: 'W7PXBH' }), 'cinqle://open?friend=W7PXBH');
+  assert.equal(buildAppLink({ kind: 'join', code: 'ABCD2345' }), 'cinqle://open?join=ABCD2345');
+  assert.equal(buildAppLink(null), 'cinqle://open');
+  assert.deepEqual(parseInviteUrl(buildAppLink({ kind: 'friend', code: 'W7PXBH' })), { kind: 'friend', code: 'W7PXBH' });
+});
+
+test('parseInviteUrl understands universal links and every cinqle:// form', () => {
+  assert.deepEqual(parseInviteUrl('https://cinq.jonathanclark11.workers.dev/?friend=SLWN9T'), { kind: 'friend', code: 'SLWN9T' });
+  assert.deepEqual(parseInviteUrl('https://cinq.jonathanclark11.workers.dev/?join=abcd2345'), { kind: 'join', code: 'ABCD2345' });
+  assert.deepEqual(parseInviteUrl('cinqle://open?friend=slwn9t'), { kind: 'friend', code: 'SLWN9T' });
+  assert.deepEqual(parseInviteUrl('cinqle://friend/SLWN9T'), { kind: 'friend', code: 'SLWN9T' });
+  assert.deepEqual(parseInviteUrl('cinqle://join/ABCD2345'), { kind: 'join', code: 'ABCD2345' });
+  assert.equal(parseInviteUrl('cinqle://open'), null);
+  assert.equal(parseInviteUrl('not a url'), null);
 });

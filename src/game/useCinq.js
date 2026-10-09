@@ -5,6 +5,7 @@ import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
+import { parseInviteUrl } from './platform.js';
 import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
   loadRemoved, saveRemoved, mergeIncoming, friendKey,
@@ -768,26 +769,30 @@ export function useCinq() {
     }
   }, [set]);
 
+  // Links that open the app: Universal Links (https) and the cinqle:// scheme. A cold start delivers the URL
+  // before this page has loaded, so ask for the launch URL too (once per URL per session).
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
-    const handle = CapApp.addListener('appUrlOpen', ({ url }) => {
+    if (!Capacitor.isNativePlatform()) return undefined;
+    const openInvite = (url) => {
+      const invite = parseInviteUrl(url);
+      if (!invite) return;
+      if (invite.kind === 'friend') {
+        set({ screen: 'multiplayer', mode: 'rival', error: '', savedMatches: loadSavedMatches() });
+        addFriendByCode(invite.code);
+      } else {
+        set({ screen: 'multiplayer', mode: 'rival', joinCode: invite.code, error: '' });
+      }
+    };
+    CapApp.getLaunchUrl().then((launch) => {
+      if (!launch?.url) return;
+      const seenKey = `cinq-launch-url:${launch.url}`;
       try {
-        const u = new URL(url);
-        const friendCode = normalizeFriendCode(u.searchParams.get('friend'));
-        if (friendCode) {
-          set({ screen: 'multiplayer', mode: 'rival', error: '', savedMatches: loadSavedMatches() });
-          addFriendByCode(friendCode);
-          return;
-        }
-        const code = u.searchParams.get('join');
-        if (!code) return;
-        set({
-          screen: 'multiplayer', mode: 'rival',
-          joinCode: code.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8),
-          error: '',
-        });
-      } catch { /* ignore malformed URLs */ }
-    });
+        if (sessionStorage.getItem(seenKey)) return;
+        sessionStorage.setItem(seenKey, '1');
+      } catch { /* optional */ }
+      openInvite(launch.url);
+    }).catch(() => {});
+    const handle = CapApp.addListener('appUrlOpen', ({ url }) => openInvite(url));
     return () => { handle.then((h) => h.remove()); };
   }, [addFriendByCode, set]);
 

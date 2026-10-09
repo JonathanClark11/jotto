@@ -48,3 +48,23 @@ export function parseInvite(search) {
   if (join.length === 8) return { kind: 'join', code: join };
   return null;
 }
+
+// cinqle://open?friend=CODE or ?join=CODE. The same query form the Universal Link uses, so one parser covers both.
+export function buildAppLink(invite, scheme = 'cinqle') {
+  if (!invite) return `${scheme}://open`;
+  return `${scheme}://open?${invite.kind === 'friend' ? 'friend' : 'join'}=${invite.code}`;
+}
+
+// Reads an invite from any URL the app can be opened with:
+// https://host/?friend=CODE, https://host/?join=CODE, cinqle://open?friend=CODE, cinqle://friend/CODE, cinqle://join/CODE.
+export function parseInviteUrl(url) {
+  try {
+    const u = new URL(url);
+    const fromQuery = parseInvite(u.search);
+    if (fromQuery) return fromQuery;
+    const segments = [u.host, ...u.pathname.split('/')].filter(Boolean);
+    if (segments[0] === 'friend' && segments[1]) return parseInvite(`?friend=${segments[1]}`);
+    if (segments[0] === 'join' && segments[1]) return parseInvite(`?join=${segments[1]}`);
+  } catch { /* not a URL */ }
+  return null;
+}

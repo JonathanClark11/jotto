@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { APP_NAME, APP_STORE_URL } from '../config.js';
-import { parseInvite } from '../game/platform.js';
+import { APP_NAME, APP_STORE_URL, OPEN_IN_APP_ENABLED } from '../config.js';
+import { buildAppLink, parseInvite } from '../game/platform.js';
 
 // Shown instead of the game in any normal browser. Cinqle only plays inside the iOS app, so a shared
 // link that lands here points people to the app and shows the code to enter if the app doesn't open itself.
@@ -8,6 +8,7 @@ export function GetTheApp() {
   const [invite] = useState(() => parseInvite(globalThis.location?.search));
   const [friendName, setFriendName] = useState('');
   const [copied, setCopied] = useState(false);
+  const [openTried, setOpenTried] = useState(false);
 
   useEffect(() => {
     if (invite?.kind !== 'friend') return undefined;
@@ -25,6 +26,13 @@ export function GetTheApp() {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch { /* clipboard blocked: the code is shown on screen */ }
+  };
+
+  // Try the cinqle:// scheme. If the app opened, the page goes to the background; if we are still visible after
+  // a moment the app is not installed or is too old to know the scheme, so say what to do.
+  const openInApp = () => {
+    window.location.href = buildAppLink(invite);
+    window.setTimeout(() => { if (document.visibilityState === 'visible') setOpenTried(true); }, 1600);
   };
 
   let headline = `${APP_NAME} is an iPhone app`;
@@ -60,7 +68,17 @@ export function GetTheApp() {
       <div className="landing-sub">
         Guess the secret five-letter word, and play friends turn by turn. {APP_NAME} is only available in the iOS app.
       </div>
-      <a className="landing-store-btn" href={APP_STORE_URL}>GET {APP_NAME.toUpperCase()} ON THE APP STORE</a>
+      {OPEN_IN_APP_ENABLED && (
+        <>
+          <button className="landing-store-btn landing-open-btn" onClick={openInApp}>OPEN IN {APP_NAME.toUpperCase()}</button>
+          {openTried && (
+            <div className="landing-note">
+              Nothing opened? Install or update {APP_NAME} from the App Store, then try again.
+            </div>
+          )}
+        </>
+      )}
+      <a className={OPEN_IN_APP_ENABLED ? 'landing-store-btn landing-store-alt' : 'landing-store-btn'} href={APP_STORE_URL}>GET {APP_NAME.toUpperCase()} ON THE APP STORE</a>
       {steps}
       <div className="landing-foot">Already have the app? Open it from your home screen.</div>
     </div>
