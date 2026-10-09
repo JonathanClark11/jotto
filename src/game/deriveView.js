@@ -181,7 +181,7 @@ export function deriveView(state, actions, secretList, showWordsLeft) {
     ...r,
     puzzleNumber: r.puzzleNumber ?? puzzleNumber(r.date),
   }));
-  const [_y, _m, _d] = todayKeyVal.split('-').map(Number);
+  const [, _m, _d] = todayKeyVal.split('-').map(Number);
   const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
   const dailyDateLabel = MONTHS[_m - 1] + ' ' + _d;
   const dailySub = todayRec

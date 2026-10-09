@@ -311,9 +311,12 @@ export function useCinq() {
     const profileFields = {
       profileName: profile.name, friendCode: profile.friendCode, friends, removedFriends: loadRemoved(),
     };
+    // One-time hydration from localStorage on mount; it can't run during render without breaking SSR/hydration.
+    /* eslint-disable react-hooks/set-state-in-effect */
     if (saved) setState((previous) => ({ ...previous, ...saved, savedMatches, ...profileFields }));
     else setState((previous) => ({ ...previous, savedMatches, ...profileFields }));
     loadPlayerStats();
+    /* eslint-enable react-hooks/set-state-in-effect */
     syncIncomingFriends();
 
     // Players who already picked a name in an earlier version get a friend ID without retyping it.
@@ -386,7 +389,7 @@ export function useCinq() {
   }, [state.screen, state.savedMatches.length, refreshSavedMatches, syncIncomingFriends]);
 
   useEffect(() => {
-    if (state.mode === 'rival' && state.matchStatus === 'finished') loadPlayerStats();
+    if (state.mode === 'rival' && state.matchStatus === 'finished') loadPlayerStats(); // eslint-disable-line react-hooks/set-state-in-effect -- fetch on match finish; sets loading flag first
   }, [state.mode, state.matchStatus, state.matchCode, loadPlayerStats]);
 
   const startDaily = useCallback(() => {
@@ -698,7 +701,7 @@ export function useCinq() {
     if (current.mode === 'daily') goHome();
     else if (current.mode === 'solo') startSolo();
     else startRival();
-  }, [goHome, startDaily, startRival, startSolo]);
+  }, [goHome, startRival, startSolo]);
 
   const setView = useCallback((view) => {
     set(view === 'rival' ? { view, rivalNew: false } : { view });
@@ -750,7 +753,7 @@ export function useCinq() {
       }
       set({ shareCopiedDate: date });
       window.setTimeout(() => set({ shareCopiedDate: null }), 2200);
-    } catch (error) {
+    } catch {
       // user cancelled share sheet
     }
   }, [set]);
