@@ -739,8 +739,9 @@ button {
 }
 
 .keyboard-row-3 {
-  grid-template-columns: repeat(7, 1fr);
-  margin: 0 13.5%;
+  /* Z X C V B N M then a wider delete key at the far right, where it sits on an iOS keyboard */
+  grid-template-columns: repeat(7, 1fr) 1.5fr;
+  margin: 0 0 0 13.5%;
 }
 
 .key {
@@ -753,19 +754,15 @@ button {
   padding-top: 12px;
 }
 
-.backspace-btn {
-  flex: none;
-  width: 64px;
-  border: 1.5px solid #DAD6CC;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.key-backspace {
+  height: 44px;
+  min-width: 44px;
+  border-radius: 6px;
+  background: #E4E1DA;
+  color: #1C1B18;
   font-size: 18px;
-  color: #5C594F;
   cursor: pointer;
   user-select: none;
-  background: none;
 }
 
 .action-btn {
@@ -1745,3 +1742,75 @@ button {
   color: #1C1B18;
   border: 1.5px solid #1C1B18;
 }
+
+/* Intro demos: tiny pictures of the tool pills and keys */
+
+.intro-demo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 0 6px;
+}
+
+.intro-demo-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.intro-demo-item small {
+  font-size: 11px;
+  color: #8B877D;
+  min-width: 92px;
+  text-align: left;
+}
+
+.demo-pill {
+  display: inline-block;
+  min-width: 56px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1.5px solid #DAD6CC;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #5C594F;
+}
+
+.demo-pill-elim { background: #B4443A; border-color: #B4443A; color: #fff; }
+.demo-pill-has { background: #0E7C86; border-color: #0E7C86; color: #fff; }
+.demo-pill-group { background: #8A5FA0; border-color: #8A5FA0; color: #fff; }
+
+.demo-key {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 40px;
+  border-radius: 6px;
+  background: #F1EFE9;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1C1B18;
+}
+
+.demo-key i,
+.demo-key b {
+  position: absolute;
+  top: 2px;
+  font-size: 9px;
+  font-weight: 800;
+  font-style: normal;
+}
+
+.demo-key i { left: 4px; }
+.demo-key b { right: 5px; color: #8A5FA0; }
+
+.demo-key-elim { background: #FBECE9; color: #B4443A; text-decoration: line-through; }
+.demo-key-elim i { color: #B4443A; text-decoration: none; }
+.demo-key-has { background: #0E7C86; color: #fff; }
+.demo-key-has i { color: #fff; }
+.demo-key-auto { background: #FAF9F6; color: #D5D1C7; text-decoration: line-through; }
+.demo-key-group { box-shadow: inset 0 0 0 1.5px #8A5FA0; }

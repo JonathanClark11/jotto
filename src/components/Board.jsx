@@ -37,15 +37,18 @@ export function Board({ vals, actions }) {
             {row.map((L) => (
               <div key={L.ch} className="key" style={L.style} onClick={L.onTap}>
                 <span>{L.ch}</span>
+                {L.marker && <span style={L.markerStyle} aria-hidden="true">{L.marker.glyph}</span>}
                 {L.badge && <span style={L.badgeStyle}>{L.badge}</span>}
               </div>
             ))}
+            {rowIndex === 2 && (
+              <button className="key key-backspace hoverable" onClick={actions.backspace} aria-label="Delete">&#9003;</button>
+            )}
           </div>
         ))}
       </div>
 
       <div className="bottom-row">
-        <button className="backspace-btn hoverable" onClick={actions.backspace}>&#9003;</button>
         <div className="action-btn" style={vals.actionStyle} onClick={actions.action}>
           {vals.actionLabel}
         </div>

@@ -10,7 +10,16 @@ export const INTRO_CARDS = {
     { title: 'Find the secret word', body: 'Every Cinqle word has five letters. Guess any five-letter word to get a clue.' },
     { title: 'The clue is a count', body: 'You get a number: how many letters of your guess are in the secret word. Not which ones, and not where.' },
     { title: 'Not Wordle', body: 'No green or yellow tiles. Only the count, and no letter repeats in a word. Use the counts to work out which letters are in.' },
-    { title: 'Cross out and circle', body: 'Tap letters on the board to circle the ones you think are in and cross out the ones that are out.' },
+    {
+      title: 'Mark what you know',
+      body: 'Tap ✕, then tap letters you are sure are NOT in the word. Tap ✓, then letters you are sure ARE. The keyboard remembers your marks, and the game crosses out some letters for you.',
+      demo: 'marks',
+    },
+    {
+      title: 'Groups: “2 OF”',
+      body: 'Think two of C, R, A and T are in the word? Tap 2 OF, tap those four letters, then tap 2 OF again to save. Use 1 OF and 3 OF the same way.',
+      demo: 'groups',
+    },
   ],
   multiplayer: [
     {

@@ -38,9 +38,9 @@ test('survives broken storage without throwing', () => {
   assert.doesNotThrow(() => markIntroSeen('howto', broken));
 });
 
-test('how-to is 3 to 4 cards and covers the count mechanic and the Wordle difference', () => {
+test('how-to is 3 to 5 cards and covers the count mechanic and the Wordle difference', () => {
   const cards = INTRO_CARDS.howto;
-  assert.ok(cards.length >= 3 && cards.length <= 4);
+  assert.ok(cards.length >= 3 && cards.length <= 5);
   const text = cards.map((c) => `${c.title} ${c.body}`).join(' ');
   assert.match(text, /count/i);
   assert.match(text, /Wordle/);
@@ -53,4 +53,14 @@ test('multiplayer explainer is one screen covering secret words, turns and winni
   assert.match(body, /secret word/);
   assert.match(body, /turns/);
   assert.match(body, /first to crack/i);
+});
+
+test('how-to explains the ✕, ✓ and "N OF" tool buttons', () => {
+  const text = INTRO_CARDS.howto.map((c) => `${c.title} ${c.body}`).join(' ');
+  assert.match(text, /✕/);
+  assert.match(text, /✓/);
+  assert.match(text, /2 OF/);
+  assert.match(text, /1 OF and 3 OF/);
+  assert.ok(INTRO_CARDS.howto.some((c) => c.demo === 'marks'));
+  assert.ok(INTRO_CARDS.howto.some((c) => c.demo === 'groups'));
 });

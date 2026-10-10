@@ -174,6 +174,50 @@ test('keyboard keys show elim, has and auto-elim status', () => {
   assert.equal(key(v, 'Z').style.textDecoration, undefined);
 });
 
+test('keyboard tells explicit ✕, explicit ✓ and auto-eliminated letters apart', () => {
+  const v = view(makeState({
+    myGuesses: [{ word: 'FGHIJ', count: 0 }],
+    marks: { A: 'has', B: 'elim' },
+  }));
+  // explicit ✕: red tint + red strike + corner ✕
+  assert.equal(key(v, 'B').style.color, '#B4443A');
+  assert.equal(key(v, 'B').style.background, '#FBECE9');
+  assert.deepEqual(key(v, 'B').marker, { glyph: '✕', color: '#B4443A' });
+  // explicit ✓: filled teal + corner ✓
+  assert.equal(key(v, 'A').style.background, ACC);
+  assert.equal(key(v, 'A').marker.glyph, '✓');
+  // auto-eliminated: quiet fade, no corner mark, and not the explicit red
+  assert.equal(key(v, 'F').style.color, DIM);
+  assert.equal(key(v, 'F').marker, null);
+  assert.notEqual(key(v, 'F').style.color, key(v, 'B').style.color);
+  // untouched letters carry no mark
+  assert.equal(key(v, 'Z').marker, null);
+});
+
+test('an explicit ✕ stays red even if the game would also auto-eliminate that letter', () => {
+  const v = view(makeState({ myGuesses: [{ word: 'ABCDE', count: 0 }], marks: { B: 'elim' } }));
+  assert.equal(key(v, 'B').style.color, '#B4443A');
+  assert.equal(key(v, 'C').style.color, DIM);
+});
+
+test('guess-row letters use red for an explicit ✕ and the quiet fade for auto-eliminated ones', () => {
+  const v = view(makeState({
+    myGuesses: [{ word: 'ABCDE', count: 1 }, { word: 'FGHIJ', count: 0 }],
+    marks: { A: 'has', B: 'elim' },
+  }));
+  const [, b, c] = v.myRows[0].chars;
+  assert.equal(b.style.color, '#B4443A');
+  assert.equal(c.style.color, DIM);
+});
+
+test('the ✕ tool pill is red when active, ✓ stays teal', () => {
+  const elim = view(makeState({ tool: 'elim' })).tools.find((t) => t.key === 'elim');
+  const has = view(makeState({ tool: 'has' })).tools.find((t) => t.key === 'has');
+  assert.equal(elim.style.background, '#B4443A');
+  assert.equal(has.style.background, ACC);
+  assert.equal(view(makeState({ tool: 'type' })).tools.find((t) => t.key === 'elim').style.background, 'transparent');
+});
+
 test('a circled letter stays circled even if a 0-count guess contains it', () => {
   const v = view(makeState({ myGuesses: [{ word: 'ABCDE', count: 0 }], marks: { A: 'has' } }));
   assert.equal(key(v, 'A').style.background, ACC);
@@ -213,7 +257,7 @@ test('setup keyboard highlights letters already typed', () => {
 test('tool pills mark the active tool, preferring a pending tool', () => {
   const plain = view(makeState({ tool: 'elim' }));
   assert.equal(plain.tools.length, 6);
-  assert.equal(plain.tools.find((t) => t.key === 'elim').style.background, ACC);
+  assert.equal(plain.tools.find((t) => t.key === 'elim').style.background, '#B4443A'); // ✕ is red, not teal
   assert.equal(plain.tools.find((t) => t.key === 'type').style.background, 'transparent');
   const pending = view(makeState({ tool: 'elim', pendingTool: '3' }));
   assert.equal(pending.tools.find((t) => t.key === '3').style.background, '#0E7C86');

@@ -3,7 +3,8 @@ import { buildFriendList, friendKey, headToHead, matchesForFriend } from './frie
 import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory, computeLocalStats, puzzleNumber } from './logic.js';
 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
-  DIM = '#D5D1C7', FADE = '#B7B2A6', AMBER = '#C58A2D';
+  DIM = '#D5D1C7', FADE = '#B7B2A6', AMBER = '#C58A2D',
+  RED = '#B4443A', RED_TINT = '#FBECE9';
 
 function formatLastPlayed(isoString) {
   if (!isoString) return '';
@@ -92,8 +93,10 @@ export function deriveView(state, actions, secretList, showWordsLeft, opts = {})
       let sup = '', supStyle = null;
       if (useMarks) {
         const circled = s.marks[ch] === 'has';
-        const crossed = !circled && (s.marks[ch] === 'elim' || autoE[ch]);
-        if (crossed) Object.assign(st, { color: DIM, textDecoration: 'line-through', textDecorationColor: FADE });
+        const manualOut = !circled && s.marks[ch] === 'elim';
+        const crossed = !circled && (manualOut || autoE[ch]);
+        if (manualOut) Object.assign(st, { color: RED, textDecoration: 'line-through', textDecorationColor: RED });
+        else if (crossed) Object.assign(st, { color: DIM, textDecoration: 'line-through', textDecorationColor: FADE });
         else if (circled) Object.assign(st, {
           color: ACC, textDecoration: 'none',
           boxShadow: 'inset 0 0 0 1.5px ' + ACC, borderRadius: '50%',
@@ -137,12 +140,24 @@ export function deriveView(state, actions, secretList, showWordsLeft, opts = {})
     const st = { height: 44, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 600, position: 'relative', cursor: 'pointer', userSelect: 'none', background: TILE, color: INK };
     let badge = '';
     let badgeColor = ACC;
+    let marker = null;
     if (isGame) {
       const mark = s.marks[ch];
       const memberIdx = [];
       s.groups.forEach((g, gi2) => { if (g.letters.indexOf(ch) >= 0) memberIdx.push(gi2); });
-      if (mark === 'elim' || (autoE[ch] && mark !== 'has')) Object.assign(st, { background: '#FAF9F6', color: DIM, textDecoration: 'line-through' });
-      else if (mark === 'has') Object.assign(st, { background: ACC, color: '#fff' });
+      // Three states a player must be able to tell apart at a glance:
+      //   explicit ✕ (you marked it out): red tint, red strike and a small ✕ corner mark
+      //   explicit ✓ (you marked it in):  filled teal and a small ✓ corner mark
+      //   auto-eliminated by the game:    faded strike only, no mark
+      if (mark === 'elim') {
+        Object.assign(st, { background: RED_TINT, color: RED, textDecoration: 'line-through', textDecorationColor: RED });
+        marker = { glyph: '✕', color: RED };
+      } else if (mark === 'has') {
+        Object.assign(st, { background: ACC, color: '#fff' });
+        marker = { glyph: '✓', color: '#fff' };
+      } else if (autoE[ch]) {
+        Object.assign(st, { background: '#FAF9F6', color: DIM, textDecoration: 'line-through' });
+      }
       if (memberIdx.length) {
         badgeColor = groupColor(memberIdx[0]).c;
         st.boxShadow = 'inset 0 0 0 1.5px ' + badgeColor;
@@ -153,7 +168,8 @@ export function deriveView(state, actions, secretList, showWordsLeft, opts = {})
       Object.assign(st, { background: INK, color: '#FAF9F6' });
     }
     return {
-      ch, style: st, badge,
+      ch, style: st, badge, marker,
+      markerStyle: marker ? { position: 'absolute', top: 2, left: 4, fontSize: 9, fontWeight: 800, lineHeight: 1, color: marker.color, textDecoration: 'none' } : null,
       badgeStyle: { position: 'absolute', top: 2, right: 5, fontSize: 9, fontWeight: 800, color: badgeColor },
       onTap: () => actions.tapLetter(ch),
     };
@@ -166,7 +182,7 @@ export function deriveView(state, actions, secretList, showWordsLeft, opts = {})
   ];
   const tools = toolDefs.map((t) => {
     const active = s.pendingTool ? s.pendingTool === t.id : s.tool === t.id;
-    const tc = GROUP_TOOL_COLORS[t.id] ? GROUP_TOOL_COLORS[t.id].c : ACC;
+    const tc = GROUP_TOOL_COLORS[t.id] ? GROUP_TOOL_COLORS[t.id].c : (t.id === 'elim' ? RED : ACC);
     return {
       key: t.id,
       label: t.label,
