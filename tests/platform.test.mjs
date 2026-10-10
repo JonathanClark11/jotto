@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAppLink, looksLikeAppWebview, parseInvite, parseInviteUrl } from '../src/game/platform.js';
+import { buildAppLink, isPreviewHost, looksLikeAppWebview, parseInvite, parseInviteUrl } from '../src/game/platform.js';
 
 test('parseInvite reads a friend ID from a shared link', () => {
   assert.deepEqual(parseInvite('?friend=w7pxbh'), { kind: 'friend', code: 'W7PXBH' });
@@ -48,4 +48,15 @@ test('parseInviteUrl understands universal links and every cinqle:// form', () =
   assert.deepEqual(parseInviteUrl('cinqle://join/ABCD2345'), { kind: 'join', code: 'ABCD2345' });
   assert.equal(parseInviteUrl('cinqle://open'), null);
   assert.equal(parseInviteUrl('not a url'), null);
+});
+
+test('isPreviewHost allows the tailnet preview and localhost but never the public Worker', () => {
+  assert.equal(isPreviewHost('jons-mac-mini.tail712946.ts.net'), true);
+  assert.equal(isPreviewHost('localhost'), true);
+  assert.equal(isPreviewHost('127.0.0.1'), true);
+  assert.equal(isPreviewHost('cinq.jonathanclark11.workers.dev'), false);
+  assert.equal(isPreviewHost('evil.example.com'), false);
+  assert.equal(isPreviewHost('ts.net.evil.com'), false);
+  assert.equal(isPreviewHost(''), false);
+  assert.equal(isPreviewHost(undefined), false);
 });

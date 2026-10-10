@@ -22,9 +22,18 @@ export function isNativeApp() {
   }
 }
 
+// Preview hosts where the game may run in a normal browser: the private tailnet preview (*.ts.net) and localhost.
+// The public cinq Worker is never matched, so real users in a browser still get the landing page.
+export function isPreviewHost(hostname) {
+  const host = String(hostname || '').toLowerCase();
+  return host.endsWith('.ts.net') || host === 'localhost' || host === '127.0.0.1';
+}
+
 // Developer escape hatch: open the site with ?web=1 once to play in a desktop browser for testing.
+// Preview hosts skip the gate automatically.
 export function webBypassEnabled() {
   try {
+    if (isPreviewHost(globalThis.location?.hostname)) return true;
     if (new URLSearchParams(globalThis.location.search).get('web') === '1') {
       globalThis.sessionStorage.setItem(BYPASS_KEY, '1');
     }
