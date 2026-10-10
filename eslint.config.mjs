@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated bundles (native iOS project, vite build output).
+    "ios/**",
+    "dist/**",
   ]),
 ]);
 
