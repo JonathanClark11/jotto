@@ -1,12 +1,33 @@
+import { useEffect, useState } from 'react';
+import { claimTurnToast } from '../game/turnToast.js';
+
 export function Game({ vals, actions }) {
+  const [toast, setToast] = useState('');
+  const toastKey = vals.turnToast?.key;
+  const toastText = vals.turnToast?.text;
+  useEffect(() => {
+    if (!toastKey) return undefined;
+    let hideTimer;
+    // Claim inside the timer so a cancelled effect run (StrictMode) does not burn the one-time toast.
+    const showTimer = setTimeout(() => {
+      if (!claimTurnToast(toastKey)) return;
+      setToast(toastText);
+      hideTimer = setTimeout(() => setToast(''), 6000);
+    }, 0);
+    return () => { clearTimeout(showTimer); clearTimeout(hideTimer); };
+  }, [toastKey, toastText]);
+
+  const banner = vals.turnBanner;
   return (
     <div className="game-screen" data-screen-label="Game">
       {vals.isRival && (
-        <div className={`turn-banner ${vals.yourTurn ? 'your-turn' : ''}`}>
-          <span>{vals.matchStatus === 'waiting' ? 'WAITING FOR YOUR FRIEND' : (vals.yourTurn ? 'YOUR TURN' : 'NOT YOUR TURN')}</span>
+        <div className={`turn-banner ${vals.yourTurn ? 'your-turn' : ''}${banner?.level ? ` turn-banner--${banner.level}` : ''}`}>
+          <span>{banner ? banner.text : (vals.matchStatus === 'waiting' ? 'WAITING FOR YOUR FRIEND' : (vals.yourTurn ? 'YOUR TURN' : 'NOT YOUR TURN'))}</span>
           <span className="turn-code">{vals.matchCode}</span>
         </div>
       )}
+      {vals.isRival && banner?.sub && <div className="turn-sub">{banner.sub}</div>}
+      {toast && <div className="turn-toast" role="status" onClick={() => setToast('')}>{toast}</div>}
 
       {vals.reviewing && (
         <button className="results-return-btn" onClick={actions.showResults}>VIEW RESULTS</button>

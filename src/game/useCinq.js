@@ -59,6 +59,7 @@ function storeMatchSummary(match, token) {
     winner: match.winner,
     role: match.role,
     updatedAt: match.updatedAt || new Date().toISOString(),
+    forfeit: Boolean(match.expired),
   };
   const index = rows.findIndex((row) => row.code === match.code);
   if (index >= 0) rows[index] = next; else rows.push(next);
@@ -73,7 +74,7 @@ const initialState = {
   pendingTool: null, pendingLetters: [], tool: 'type', view: 'you',
   rivalNew: false, thinking: false, result: null, reviewing: false, error: '',
   matchCode: '', playerToken: '', matchStatus: '', playerRole: 0,
-  currentTurn: 0, yourTurn: false, opponentJoined: false, winner: null,
+  matchUpdatedAt: '', currentTurn: 0, yourTurn: false, opponentJoined: false, winner: null,
   myName: '', opponentName: '', pendingGuess: '', savedMatches: [],
   rematchCode: '', rematchSourceCode: '', rematchSourceToken: '',
   playerStats: null, playerStatsLoading: false, shareFeedback: '',
@@ -94,7 +95,7 @@ function savedState(next) {
     result: next.result, reviewing: next.reviewing,
     matchCode: next.matchCode, playerToken: next.playerToken,
     matchStatus: next.matchStatus, playerRole: next.playerRole,
-    currentTurn: next.currentTurn, yourTurn: next.yourTurn,
+    currentTurn: next.currentTurn, yourTurn: next.yourTurn, matchUpdatedAt: next.matchUpdatedAt,
     opponentJoined: next.opponentJoined, winner: next.winner,
     myName: next.myName, opponentName: next.opponentName, pendingGuess: next.pendingGuess,
     rematchCode: next.rematchCode, rematchSourceCode: next.rematchSourceCode,
@@ -174,7 +175,7 @@ export function useCinq() {
         screen: 'game', mode: 'rival',
         matchCode: match.code, playerToken: token,
         matchStatus: match.status, playerRole: match.role,
-        currentTurn: match.currentTurn, yourTurn: match.yourTurn,
+        currentTurn: match.currentTurn, yourTurn: match.yourTurn, matchUpdatedAt: match.updatedAt || '',
         opponentJoined: match.opponentJoined, winner: match.winner,
         myName: match.yourName || '', opponentName: match.opponentName || '',
         pendingGuess: match.pendingGuess || '', savedMatches,
