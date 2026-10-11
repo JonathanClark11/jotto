@@ -6,6 +6,7 @@ import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
 import { parseInviteUrl } from './platform.js';
+import { trackFriendAdded, trackMatchStarted } from './track.js';
 import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
   loadRemoved, saveRemoved, mergeIncoming, friendKey,
@@ -276,6 +277,7 @@ export function useCinq() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ playerKey: playerProfileKey(), friendCode: code }),
       });
+      trackFriendAdded();
       const stillRemoved = loadRemoved().filter((removedCode) => removedCode !== code);
       saveRemoved(stillRemoved);
       set((previous) => {
@@ -649,6 +651,7 @@ export function useCinq() {
             }),
           });
           applyMatch(data.match, data.token);
+          trackMatchStarted(current.setupIntent);
           if (!current.profileName || !current.friendCode) registerProfile(current.setupName);
         } catch (error) {
           set({ matchBusy: false, error: error.message });

@@ -12,6 +12,7 @@ import { Result } from './components/Result.jsx';
 import { StatsPanel } from './components/StatsPanel.jsx';
 import { Intro } from './components/Intro.jsx';
 import { markIntroSeen, shouldShowIntro } from './game/intro.js';
+import { trackHowToOpened, trackIntroClosed } from './game/track.js';
 import { clientMode } from './game/platform.js';
 import { GetTheApp } from './components/GetTheApp.jsx';
 
@@ -33,11 +34,12 @@ function GameApp() {
     if (shouldShowIntro('multiplayer')) setIntroOpen('multiplayer');
   }
 
-  const closeIntro = () => {
+  const closeIntro = (completed) => {
     markIntroSeen(introOpen);
+    trackIntroClosed(introOpen, completed);
     setIntroOpen(null);
   };
-  const homeActions = useMemo(() => ({ ...actions, openHowTo: () => setIntroOpen('howto') }), [actions]);
+  const homeActions = useMemo(() => ({ ...actions, openHowTo: () => { trackHowToOpened(); setIntroOpen('howto'); } }), [actions]);
 
   return (
     <div className="app-shell">
