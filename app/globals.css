@@ -1808,8 +1808,8 @@ button {
 .demo-key i { left: 4px; }
 .demo-key b { right: 5px; color: #8A5FA0; }
 
-.demo-key-elim { background: #FBECE9; color: #B4443A; text-decoration: line-through; }
-.demo-key-elim i { color: #B4443A; text-decoration: none; }
+.demo-key-elim { background: #FBECE9; color: #A63A30; text-decoration: line-through; }
+.demo-key-elim i { color: #A63A30; text-decoration: none; }
 .demo-key-has { background: #0E7C86; color: #fff; }
 .demo-key-has i { color: #fff; }
 .demo-key-auto { background: #FAF9F6; color: #D5D1C7; text-decoration: line-through; }
