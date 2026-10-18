@@ -13,6 +13,9 @@ Rules for props: no PII. Never include `playerKey`, player names, friend IDs/cod
 | `first_match_started` | The first multiplayer match this device successfully creates, joins or rematches (guarded by the `cinq-first-match-tracked` localStorage flag). | `intent`: `create`, `join` or `rematch` |
 | `friend_added` | An explicit add succeeds: friend ID typed in Multiplayer, `?friend=` link, or friend invite link. Automatic adds from matches or incoming adds do not fire. | none |
 | `rematch_started` | A rematch is successfully created from a finished match or a friend's REMATCH button. | none |
+| `landing_viewed` | The web landing page (GetTheApp) mounts, once per view. | `has_friend_id`, `has_match_code` (booleans; both false for a bare visit) |
+| `landing_app_store_tapped` | The GET ON THE APP STORE link is tapped on the landing page. | none |
+| `landing_code_copied` | The friend ID / match code is copied to the clipboard on the landing page (not fired if the clipboard is blocked). | `kind`: `friend_id` or `match_code` (never the value) |
 
 The multiplayer intro has no event yet, and no `intro_*` events existed in code, so none were added.
 Read `howto_completed / howto_opened` for how-to completion.

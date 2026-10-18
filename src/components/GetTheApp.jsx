@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { APP_NAME, APP_STORE_URL, OPEN_IN_APP_ENABLED } from '../config.js';
 import { buildAppLink, parseInvite } from '../game/platform.js';
+import { trackLandingAppStoreTapped, trackLandingCodeCopied, trackLandingViewed } from '../game/track.js';
 
 // Shown instead of the game in any normal browser. Cinqle only plays inside the iOS app, so a shared
 // link that lands here points people to the app and shows the code to enter if the app doesn't open itself.
@@ -9,6 +10,14 @@ export function GetTheApp() {
   const [friendName, setFriendName] = useState('');
   const [copied, setCopied] = useState(false);
   const [openTried, setOpenTried] = useState(false);
+  const viewTracked = useRef(false);
+
+  // Once per mount: the ref guard keeps StrictMode's double-invoked effect from counting a view twice.
+  useEffect(() => {
+    if (viewTracked.current) return;
+    viewTracked.current = true;
+    trackLandingViewed(invite);
+  }, [invite]);
 
   useEffect(() => {
     if (invite?.kind !== 'friend') return undefined;
@@ -23,6 +32,7 @@ export function GetTheApp() {
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(invite.code);
+      trackLandingCodeCopied(invite);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1800);
     } catch { /* clipboard blocked: the code is shown on screen */ }
@@ -78,7 +88,7 @@ export function GetTheApp() {
           )}
         </>
       )}
-      <a className={OPEN_IN_APP_ENABLED ? 'landing-store-btn landing-store-alt' : 'landing-store-btn'} href={APP_STORE_URL}>GET {APP_NAME.toUpperCase()} ON THE APP STORE</a>
+      <a className={OPEN_IN_APP_ENABLED ? 'landing-store-btn landing-store-alt' : 'landing-store-btn'} href={APP_STORE_URL} onClick={trackLandingAppStoreTapped}>GET {APP_NAME.toUpperCase()} ON THE APP STORE</a>
       {steps}
       <div className="landing-foot">Already have the app? Open it from your home screen.</div>
     </div>
