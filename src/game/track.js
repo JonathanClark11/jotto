@@ -40,3 +40,19 @@ export function trackMatchStarted(intent, storage = globalThis.localStorage) {
 export function trackFriendAdded() {
   track('friend_added');
 }
+
+// Landing page (GetTheApp). Props are booleans only: never the friend ID or match code themselves.
+export function trackLandingViewed(invite) {
+  track('landing_viewed', {
+    has_friend_id: invite?.kind === 'friend',
+    has_match_code: invite?.kind === 'join',
+  });
+}
+
+export function trackLandingAppStoreTapped() {
+  track('landing_app_store_tapped');
+}
+
+export function trackLandingCodeCopied(invite) {
+  track('landing_code_copied', { kind: invite?.kind === 'join' ? 'match_code' : 'friend_id' });
+}

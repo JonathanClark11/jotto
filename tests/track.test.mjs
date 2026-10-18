@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  FIRST_MATCH_KEY, setSink, track, trackFriendAdded, trackHowToOpened, trackIntroClosed, trackMatchStarted,
+  FIRST_MATCH_KEY, setSink, track, trackFriendAdded, trackHowToOpened, trackLandingAppStoreTapped, trackLandingCodeCopied, trackLandingViewed, trackIntroClosed, trackMatchStarted,
 } from '../src/game/track.js';
 
 function memoryStorage(initial = {}) {
@@ -89,4 +89,23 @@ test('friend_added fires once with no props', () => {
   const events = capture();
   trackFriendAdded();
   assert.deepEqual(events, [['friend_added', {}]]);
+});
+
+test('landing events carry only booleans/kinds, never the code value', () => {
+  const events = capture();
+  trackLandingViewed({ kind: 'friend', code: 'ABC123' });
+  trackLandingViewed({ kind: 'join', code: 'XYZ789' });
+  trackLandingViewed(null);
+  trackLandingAppStoreTapped();
+  trackLandingCodeCopied({ kind: 'friend', code: 'ABC123' });
+  trackLandingCodeCopied({ kind: 'join', code: 'XYZ789' });
+  assert.deepEqual(events, [
+    ['landing_viewed', { has_friend_id: true, has_match_code: false }],
+    ['landing_viewed', { has_friend_id: false, has_match_code: true }],
+    ['landing_viewed', { has_friend_id: false, has_match_code: false }],
+    ['landing_app_store_tapped', {}],
+    ['landing_code_copied', { kind: 'friend_id' }],
+    ['landing_code_copied', { kind: 'match_code' }],
+  ]);
+  assert.ok(!JSON.stringify(events).match(/ABC123|XYZ789/));
 });
