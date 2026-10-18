@@ -180,9 +180,9 @@ test('keyboard tells explicit ✕, explicit ✓ and auto-eliminated letters apar
     marks: { A: 'has', B: 'elim' },
   }));
   // explicit ✕: red tint + red strike + corner ✕
-  assert.equal(key(v, 'B').style.color, '#B4443A');
+  assert.equal(key(v, 'B').style.color, '#A63A30');
   assert.equal(key(v, 'B').style.background, '#FBECE9');
-  assert.deepEqual(key(v, 'B').marker, { glyph: '✕', color: '#B4443A' });
+  assert.deepEqual(key(v, 'B').marker, { glyph: '✕', color: '#A63A30' });
   // explicit ✓: filled teal + corner ✓
   assert.equal(key(v, 'A').style.background, ACC);
   assert.equal(key(v, 'A').marker.glyph, '✓');
@@ -196,7 +196,7 @@ test('keyboard tells explicit ✕, explicit ✓ and auto-eliminated letters apar
 
 test('an explicit ✕ stays red even if the game would also auto-eliminate that letter', () => {
   const v = view(makeState({ myGuesses: [{ word: 'ABCDE', count: 0 }], marks: { B: 'elim' } }));
-  assert.equal(key(v, 'B').style.color, '#B4443A');
+  assert.equal(key(v, 'B').style.color, '#A63A30');
   assert.equal(key(v, 'C').style.color, DIM);
 });
 
@@ -206,14 +206,14 @@ test('guess-row letters use red for an explicit ✕ and the quiet fade for auto-
     marks: { A: 'has', B: 'elim' },
   }));
   const [, b, c] = v.myRows[0].chars;
-  assert.equal(b.style.color, '#B4443A');
+  assert.equal(b.style.color, '#A63A30');
   assert.equal(c.style.color, DIM);
 });
 
 test('the ✕ tool pill is red when active, ✓ stays teal', () => {
   const elim = view(makeState({ tool: 'elim' })).tools.find((t) => t.key === 'elim');
   const has = view(makeState({ tool: 'has' })).tools.find((t) => t.key === 'has');
-  assert.equal(elim.style.background, '#B4443A');
+  assert.equal(elim.style.background, '#A63A30');
   assert.equal(has.style.background, ACC);
   assert.equal(view(makeState({ tool: 'type' })).tools.find((t) => t.key === 'elim').style.background, 'transparent');
 });
@@ -257,7 +257,7 @@ test('setup keyboard highlights letters already typed', () => {
 test('tool pills mark the active tool, preferring a pending tool', () => {
   const plain = view(makeState({ tool: 'elim' }));
   assert.equal(plain.tools.length, 6);
-  assert.equal(plain.tools.find((t) => t.key === 'elim').style.background, '#B4443A'); // ✕ is red, not teal
+  assert.equal(plain.tools.find((t) => t.key === 'elim').style.background, '#A63A30'); // ✕ is red, not teal
   assert.equal(plain.tools.find((t) => t.key === 'type').style.background, 'transparent');
   const pending = view(makeState({ tool: 'elim', pendingTool: '3' }));
   assert.equal(pending.tools.find((t) => t.key === '3').style.background, '#0E7C86');
@@ -307,7 +307,7 @@ test('loss shows the opponent winning and reveals their word styling', () => {
   const v = view(makeState({ mode: 'rival', opponentName: 'Sam', mySecret: 'BRAVE', rivalSecret: 'CRANE', result: { won: false, n: 1, multiplayer: true } }));
   assert.equal(v.resultKicker, 'SAM WINS');
   assert.equal(v.resultSub, 'Sam cracked BRAVE in 1 guess. Their word was:');
-  assert.equal(v.resultKickerStyle.color, '#B4443A');
+  assert.equal(v.resultKickerStyle.color, '#A63A30');
   assert.equal(v.revealTiles.map((t) => t.ch).join(''), 'CRANE');
   assert.equal(v.revealTiles[0].style.background, undefined);
   assert.equal(v.revealTiles[0].style.color, INK);
@@ -600,4 +600,31 @@ test('friend history shows forfeit labels only when flagged and enabled', () => 
   assert.equal(label([mk({ forfeit: true })]), 'WIN (FORFEIT)');
   assert.equal(label([mk({ forfeit: true, winner: 2 })]), 'LOSS (FORFEIT)');
   assert.equal(label([mk({ forfeit: true })], { expiryEnabled: false, now: NOW }), 'WIN');
+});
+
+// Colour-blind check (#55): contrast of the key states under normal vision and Machado-2009
+// protan/deutan/tritan simulation. Text on each key background must stay >= 4.5:1.
+test('explicit ✕ and ✓ key text keeps 4.5:1 contrast, including colour-blind simulation', () => {
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const rgb = (h) => { const f = h.length === 4 ? '#' + [...h.slice(1)].map((c) => c + c).join('') : h; return [1, 3, 5].map((i) => parseInt(f.slice(i, i + 2), 16)); };
+  const lum = (c) => { const [r, g, b] = c.map(lin); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const M = {
+    none: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+    deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.01182, 0.04294, 0.968881]],
+    tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.3039]],
+  };
+  const sim = (c, m) => {
+    const l = c.map(lin);
+    return M[m].map((row) => { const v = Math.min(1, Math.max(0, row[0] * l[0] + row[1] * l[1] + row[2] * l[2])); return 255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055); });
+  };
+  const v = view(makeState({ marks: { A: 'has', B: 'elim' } }));
+  for (const ch of ['A', 'B']) {
+    const { color, background } = key(v, ch).style;
+    for (const m of Object.keys(M)) {
+      const r = ratio(sim(rgb(color), m), sim(rgb(background), m));
+      assert.ok(r >= 4.5, `${ch} key under ${m}: ${r.toFixed(2)}`);
+    }
+  }
 });

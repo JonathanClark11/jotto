@@ -4,7 +4,7 @@ import { autoElim, groupColor, GROUP_TOOL_COLORS, shared, todayKey, loadHistory,
 
 const INK = '#1C1B18', ACC = '#0E7C86', TILE = '#F1EFE9',
   DIM = '#D5D1C7', FADE = '#B7B2A6', AMBER = '#C58A2D',
-  RED = '#B4443A', RED_TINT = '#FBECE9';
+  RED = '#A63A30', RED_TINT = '#FBECE9';
 
 function formatLastPlayed(isoString) {
   if (!isoString) return '';
@@ -458,7 +458,7 @@ export function deriveView(state, actions, secretList, showWordsLeft, opts = {})
     actionStyle,
     showResult: !!r && !s.reviewing,
     resultKicker,
-    resultKickerStyle: { fontSize: 13, letterSpacing: '.24em', fontWeight: 800, color: r && r.won ? ACC : '#B4443A' },
+    resultKickerStyle: { fontSize: 13, letterSpacing: '.24em', fontWeight: 800, color: r && r.won ? ACC : '#A63A30' },
     resultSub,
     revealTiles,
     playerStats: s.playerStats,
