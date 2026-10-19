@@ -1,22 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-
-// iOS Universal Links manifest. Served from the Worker because vinext does not route
-// dot-prefixed app directories (app/.well-known/... returns 404). Apple Team ID P55DBCXQCB.
-const AASA = {
-  applinks: {
-    details: [
-      {
-        appIDs: ["P55DBCXQCB.com.jonathanclark11.cinq"],
-        components: [
-          { "/": "/*", "?": { join: "?" } },
-          { "/": "/*", "?": { friend: "?" } },
-        ],
-      },
-    ],
-  },
-};
+import { AASA } from "./aasa.ts";
 
 interface Env {
   ASSETS: Fetcher;
