@@ -12,6 +12,7 @@ import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
   loadRemoved, saveRemoved, mergeIncoming, friendKey,
 } from './friends.js';
+import { normalizeMatchCode, matchCodeError, friendIdError } from './multiplayerInput.js';
 
 const SECRET_LIST = WORDS.filter((word) => word.length === 5 && new Set(word).size === 5);
 const GUESS_SET = new Set(GUESS_WORDS);
@@ -229,8 +230,8 @@ export function useCinq() {
 
   const addFriendByCode = useCallback(async (rawCode) => {
     const code = normalizeFriendCode(rawCode);
-    if (code.length !== 6) { set({ friendError: 'Friend IDs are 6 characters' }); return; }
-    if (code === stateRef.current.friendCode) { set({ friendError: 'That is your own friend ID' }); return; }
+    const invalid = friendIdError(code, stateRef.current.friendCode);
+    if (invalid) { set({ friendError: invalid }); return; }
     set({ friendBusy: true, friendError: '' });
     try {
       const data = await jsonRequest('/api/friends', {
@@ -301,7 +302,7 @@ export function useCinq() {
       setState((previous) => ({
         ...previous,
         screen: 'multiplayer', mode: 'rival',
-        joinCode: inviteCode.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8),
+        joinCode: normalizeMatchCode(inviteCode),
         error: '',
       }));
       return;
@@ -397,7 +398,8 @@ export function useCinq() {
 
   const beginJoinMatch = useCallback(() => {
     const code = stateRef.current.joinCode;
-    if (code.length !== 8) { set({ error: 'Enter the 8-character match code' }); return; }
+    const invalid = matchCodeError(code);
+    if (invalid) { set({ error: invalid }); return; }
     set({
       ...freshRound(), screen: 'setup', mode: 'rival', setupIntent: 'join', joinCode: code,
       setupName: stateRef.current.profileName || localStorage.getItem(LAST_NAME_KEY) || '',
@@ -420,7 +422,7 @@ export function useCinq() {
   }, [set]);
 
   const setJoinCode = useCallback((value) => {
-    set({ joinCode: value.toUpperCase().replace(/[^A-Z2-9]/g, '').slice(0, 8), error: '' });
+    set({ joinCode: normalizeMatchCode(value), error: '' });
   }, [set]);
 
   const resumeRival = useCallback((code, token) => {
