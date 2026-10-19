@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildAppLink, isPreviewHost, looksLikeAppWebview, parseInvite, parseInviteUrl } from '../src/game/platform.js';
+import { buildAppLink, buildInviteText, isPreviewHost, looksLikeAppWebview, parseInvite, parseInviteUrl } from '../src/game/platform.js';
 
 test('parseInvite reads a friend ID from a shared link', () => {
   assert.deepEqual(parseInvite('?friend=w7pxbh'), { kind: 'friend', code: 'W7PXBH' });
@@ -59,4 +59,18 @@ test('isPreviewHost allows the tailnet preview and localhost but never the publi
   assert.equal(isPreviewHost('ts.net.evil.com'), false);
   assert.equal(isPreviewHost(''), false);
   assert.equal(isPreviewHost(undefined), false);
+});
+
+test('buildInviteText keeps the link first and includes the match code', () => {
+  const text = buildInviteText('https://x.dev/?join=ABCD2345', 'ABCD2345');
+  assert.ok(text.startsWith('https://x.dev/?join=ABCD2345\n'));
+  assert.ok(text.includes('ABCD2345', text.indexOf('\n')));
+  assert.match(text, /enter code ABCD2345$/);
+});
+
+test('buildInviteText handles missing and unusual codes', () => {
+  assert.equal(buildInviteText('https://x.dev/?join=', ''), 'https://x.dev/?join=');
+  assert.equal(buildInviteText('https://x.dev/', null), 'https://x.dev/');
+  assert.equal(buildInviteText('', 'ABCD2345'), '');
+  assert.ok(buildInviteText('https://x.dev/', ' ab-cd 23\n45 ').endsWith('enter code ABCD2345'));
 });

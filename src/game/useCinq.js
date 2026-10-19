@@ -5,7 +5,7 @@ import { WORDS } from '../data/words.js';
 import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
-import { parseInviteUrl } from './platform.js';
+import { parseInviteUrl, buildInviteText } from './platform.js';
 import { trackFriendAdded, trackMatchStarted } from './track.js';
 import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
@@ -768,7 +768,7 @@ export function useCinq() {
     if (!code) return;
     const link = `${window.location.origin}${window.location.pathname}?join=${code}`;
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(buildInviteText(link, code, APP_NAME));
       set({ inviteCopied: true, error: '' });
       window.setTimeout(() => set({ inviteCopied: false }), 1800);
     } catch {
