@@ -6,6 +6,7 @@ import { GUESS_WORDS } from '../data/guessWords.js';
 import { pick, todayKey, dailyWord, loadHistory, saveHistory, puzzleNumber, buildShareText } from './logic.js';
 import { APP_NAME } from '../config.js';
 import { parseInviteUrl, buildInviteText } from './platform.js';
+import { freshRound, nextMatchState, tapLetterPatch, commitPendingPatch, tapToolPatch, soloGuessOutcome } from './cinqState.js';
 import { trackFriendAdded, trackMatchStarted } from './track.js';
 import {
   loadProfile, saveProfile, loadFriends, saveFriends, upsertFriend, removeFriend, normalizeFriendCode,
@@ -23,16 +24,6 @@ function isValidGuess(word) {
 
 function isValidSecret(word) {
   return SECRET_LIST.includes(word);
-}
-
-function freshRound() {
-  return {
-    myGuesses: [], rivalGuesses: [], marks: {}, groups: [],
-    pendingTool: null, pendingLetters: [], tool: 'type', view: 'you',
-    rivalNew: false, thinking: false, result: null, reviewing: false,
-    error: '', input: '', setupInput: '', setupName: '', pendingGuess: '', shareFeedback: '',
-    dailyStats: null, dailyStatsLoading: false,
-  };
 }
 
 function loadSavedMatches() {
@@ -151,18 +142,6 @@ export function useCinq() {
 
   const applyMatch = useCallback((match, token) => {
     set((previous) => {
-      const sameMatch = previous.matchCode === match.code;
-      const madeGuess = sameMatch && (match.yourGuesses || []).length > previous.myGuesses.length;
-      const base = sameMatch ? previous : { ...previous, ...freshRound() };
-      const finished = match.status === 'finished';
-      const won = finished && match.winner === match.role;
-      const result = finished ? {
-        won,
-        n: won ? match.yourGuesses.length : match.opponentGuesses.length,
-        attempts: match.yourGuesses.length,
-        multiplayer: true,
-      } : null;
-      const acceptedQueue = sameMatch && match.pendingGuess && match.pendingGuess !== previous.pendingGuess;
       let savedMatches = previous.savedMatches;
       try { savedMatches = storeMatchSummary(match, token); } catch { /* optional device index */ }
       let friends = previous.friends;
@@ -170,25 +149,7 @@ export function useCinq() {
         friends = upsertFriend(previous.friends, { friendCode: match.opponentFriendCode, name: match.opponentName });
         if (friends !== previous.friends) saveFriends(friends);
       }
-      return {
-        ...base,
-        friends,
-        screen: 'game', mode: 'rival',
-        matchCode: match.code, playerToken: token,
-        matchStatus: match.status, playerRole: match.role,
-        currentTurn: match.currentTurn, yourTurn: match.yourTurn, matchUpdatedAt: match.updatedAt || '',
-        opponentJoined: match.opponentJoined, winner: match.winner,
-        myName: match.yourName || '', opponentName: match.opponentName || '',
-        pendingGuess: match.pendingGuess || '', savedMatches,
-        rematchCode: match.rematchCode || '',
-        mySecret: match.yourSecret || '', rivalSecret: match.opponentSecret || '',
-        myGuesses: match.yourGuesses || [], rivalGuesses: match.opponentGuesses || [],
-        input: (madeGuess || acceptedQueue) ? '' : base.input,
-        rivalNew: (match.opponentGuesses || []).length > previous.rivalGuesses.length && previous.view !== 'rival',
-        result,
-        reviewing: result && previous.result ? previous.reviewing : false,
-        matchBusy: false,
-      };
+      return nextMatchState(previous, match, token, savedMatches, friends);
     });
   }, [set]);
 
@@ -566,27 +527,8 @@ export function useCinq() {
   }, [set]);
 
   const tapLetter = useCallback((letter) => {
-    const current = stateRef.current;
-    if (current.screen === 'setup') {
-      if (current.setupInput.length < 5 && !current.setupInput.includes(letter)) set({ setupInput: current.setupInput + letter, error: '' });
-      return;
-    }
-    if (current.screen !== 'game' || current.result) return;
-    if (current.mode === 'rival' && current.matchStatus !== 'active') return;
-    if (current.pendingTool) {
-      const letters = current.pendingLetters.slice();
-      const index = letters.indexOf(letter);
-      if (index >= 0) letters.splice(index, 1); else letters.push(letter);
-      set({ pendingLetters: letters });
-      return;
-    }
-    if (current.tool === 'elim' || current.tool === 'has') {
-      const marks = { ...current.marks };
-      if (marks[letter] === current.tool) delete marks[letter]; else marks[letter] = current.tool;
-      set({ marks });
-      return;
-    }
-    if (current.input.length < 5 && !current.input.includes(letter)) set({ input: current.input + letter, error: '' });
+    const patch = tapLetterPatch(stateRef.current, letter);
+    if (patch) set(patch);
   }, [set]);
 
   const backspace = useCallback(() => {
@@ -596,29 +538,12 @@ export function useCinq() {
   }, [set]);
 
   const commitPending = useCallback(() => {
-    const current = stateRef.current;
-    if (current.pendingLetters.length >= 2) {
-      set({
-        groups: current.groups.concat([{ count: Number(current.pendingTool), letters: current.pendingLetters.slice().sort() }]),
-        pendingTool: null, pendingLetters: [], tool: 'type',
-      });
-    } else {
-      set({
-        pendingTool: null, pendingLetters: [], tool: 'type',
-        error: current.pendingLetters.length === 1 ? 'A group needs at least 2 letters' : '',
-      });
-    }
+    set(commitPendingPatch(stateRef.current));
   }, [set]);
 
   const tapTool = useCallback((id) => {
-    const current = stateRef.current;
-    if (current.pendingTool === id) { commitPending(); return; }
-    if (['1', '2', '3'].includes(id)) {
-      set({ pendingTool: id, pendingLetters: [], tool: 'group', error: '' });
-      return;
-    }
-    set({ pendingTool: null, pendingLetters: [], tool: id, error: '' });
-  }, [commitPending, set]);
+    set(tapToolPatch(stateRef.current, id));
+  }, [set]);
 
   const removeGroup = useCallback((index) => {
     const groups = stateRef.current.groups.slice();
@@ -662,9 +587,8 @@ export function useCinq() {
     if (current.screen !== 'game' || current.result) return;
     if (current.pendingTool) { commitPending(); return; }
     const word = current.input;
-    if (word.length < 5) { set({ error: 'Guesses need 5 letters' }); return; }
-    if (current.myGuesses.some((guess) => guess.word === word)) { set({ error: 'Already guessed' }); return; }
-    if (!isValidGuess(word)) { set({ error: 'Not in the word list' }); return; }
+    const outcome = soloGuessOutcome(current, word, isValidGuess);
+    if (outcome.error) { set({ error: outcome.error }); return; }
 
     if (current.mode === 'rival') {
       set({ matchBusy: true, error: '' });
@@ -681,9 +605,8 @@ export function useCinq() {
       return;
     }
 
-    const count = word.split('').filter((letter) => current.rivalSecret.includes(letter)).length;
-    const myGuesses = current.myGuesses.concat([{ word, count }]);
-    if (word === current.rivalSecret) {
+    const { myGuesses } = outcome;
+    if (outcome.won) {
       if (current.mode === 'daily') {
         const key = current.dailyDate || todayKey();
         const history = loadHistory();
