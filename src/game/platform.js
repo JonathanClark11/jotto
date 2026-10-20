@@ -77,3 +77,12 @@ export function parseInviteUrl(url) {
   } catch { /* not a URL */ }
   return null;
 }
+
+// Text copied by "copy invite". The link stays first so Universal Links still work from Messages; the code line is
+// for recipients in an in-app browser or without the app. Returns the bare link when the code is missing or odd.
+export function buildInviteText(link, code, appName = 'Cinqle') {
+  const clean = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!link) return '';
+  if (!clean) return link;
+  return `${link}\nJoin my ${appName} match! Or open ${appName} and enter code ${clean}`;
+}
