@@ -81,3 +81,22 @@ test('queries compute the expected numbers on fixture data', () => {
   // a: daily d0, d1 and matches => 3 days; b: daily d0 + match d1 => 2 days
   assert.deepEqual(run('returning-7d'), [{ active_players: 2, returning_players: 2 }]);
 });
+
+test('turn-expiry-exposure buckets active matches by age and counts only', () => {
+  const db = newDb();
+  const ago = (n) => new Date(Date.now() - n * 86400000).toISOString();
+  const match = db.prepare('INSERT INTO cinq_matches (code, status, player1_token, player1_secret, player1_key, player2_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  const run = () => ({ ...db.prepare(queries.find((q) => q.id === 'turn-expiry-exposure').sql).get() });
+  assert.deepEqual(run(), { active_matches: 0, under_3d: 0, d3_to_7: 0, d7_to_14: 0, over_14d: 0, players_in_over_14d: 0, over_14d_share: 0 });
+  match.run('A1', 'active', 't', 's', 'p1', 'p2', ago(40), ago(1));
+  match.run('A2', 'active', 't', 's', 'p1', 'p3', ago(40), ago(5));
+  match.run('A3', 'active', 't', 's', 'p4', 'p5', ago(40), ago(10));
+  match.run('A4', 'active', 't', 's', 'p1', 'p2', ago(40), ago(15));
+  match.run('A5', 'active', 't', 's', 'p2', 'p6', ago(40), ago(30));
+  match.run('A6', 'active', 't', 's', null, null, ago(40), ago(20));
+  match.run('W1', 'waiting', 't', 's', 'p7', null, ago(40), ago(50));
+  match.run('F1', 'finished', 't', 's', 'p8', 'p9', ago(40), ago(50));
+  // over 14d: A4 (p1,p2), A5 (p2,p6), A6 (no keys) => players p1, p2, p6
+  assert.deepEqual(run(), { active_matches: 6, under_3d: 1, d3_to_7: 1, d7_to_14: 1, over_14d: 3, players_in_over_14d: 3, over_14d_share: 0.5 });
+  assert.ok(!/player\w*_(key|token|secret)\s*,|\bcode\b/i.test(queries.find((q) => q.id === 'turn-expiry-exposure').sql.split('FROM')[0]), 'no identifying columns selected at top level');
+});

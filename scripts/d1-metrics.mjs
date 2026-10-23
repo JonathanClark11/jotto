@@ -1,8 +1,12 @@
 // Prints (never runs) read-only SQL for `wrangler d1 execute cinq --remote --command ...`.
 // Usage: node scripts/d1-metrics.mjs [query-id ...]   (no ids = all queries)
+// turn-expiry-exposure: one row of counts for status='active' matches by age of updated_at (<3d, 3-7d, 7-14d, >14d),
+// distinct players (either side) in the >14d bucket, and the >14d share of all active matches. No names, keys or codes.
 // Tables are the live cinq_* tables created in app/api/_shared/cinq-db.ts; see docs/usage-metrics.md.
 import { pathToFileURL } from 'node:url';
 
+// Age in days of an active match's current turn; updated_at is the turn-start timestamp (docs/turn-expiry.md).
+const AGE = "(julianday('now') - julianday(updated_at))";
 const WINDOW = "date('now', '-29 days')";
 
 // Player activity: one row per (player, day) from rows that carry a player_key.
@@ -47,6 +51,11 @@ export const queries = [
     id: 'returning-7d',
     title: '7-day returning players: active on 2+ distinct days in the last 7 days',
     sql: `SELECT COUNT(*) AS active_players, SUM(CASE WHEN days >= 2 THEN 1 ELSE 0 END) AS returning_players FROM (SELECT player_key, COUNT(*) AS days FROM (${ACTIVITY}) WHERE day >= date('now', '-6 days') GROUP BY player_key)`,
+  },
+  {
+    id: 'turn-expiry-exposure',
+    title: 'Turn-expiry exposure: active matches by age of updated_at, and what a 14-day forfeit would hit today (counts only)',
+    sql: `SELECT COUNT(*) AS active_matches, COALESCE(SUM(CASE WHEN ${AGE} < 3 THEN 1 ELSE 0 END), 0) AS under_3d, COALESCE(SUM(CASE WHEN ${AGE} >= 3 AND ${AGE} < 7 THEN 1 ELSE 0 END), 0) AS d3_to_7, COALESCE(SUM(CASE WHEN ${AGE} >= 7 AND ${AGE} <= 14 THEN 1 ELSE 0 END), 0) AS d7_to_14, COALESCE(SUM(CASE WHEN ${AGE} > 14 THEN 1 ELSE 0 END), 0) AS over_14d, (SELECT COUNT(*) FROM (SELECT player1_key AS k FROM cinq_matches WHERE status = 'active' AND ${AGE} > 14 AND player1_key IS NOT NULL UNION SELECT player2_key AS k FROM cinq_matches WHERE status = 'active' AND ${AGE} > 14 AND player2_key IS NOT NULL)) AS players_in_over_14d, COALESCE(ROUND(1.0 * SUM(CASE WHEN ${AGE} > 14 THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0), 3), 0) AS over_14d_share FROM cinq_matches WHERE status = 'active'`,
   },
 ];
 
