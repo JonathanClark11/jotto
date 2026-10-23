@@ -31,6 +31,7 @@ built from the `cinq-db.ts` DDL.
 | `rematch-rate` | Per creation day: finished matches, how many have a `rematch_code`, and the rate. | `cinq_matches` |
 | `daily-completions` | Daily-puzzle completions per day and average guesses. | `cinq_daily_results` |
 | `returning-7d` | Players active in the last 7 days and how many of them were active on 2 or more distinct days. | `cinq_daily_results`, `cinq_player_results`, `cinq_matches.player1_key` |
+| `turn-expiry-exposure` | One row for `status = 'active'` matches: total, counts aged by `updated_at` (`under_3d`, `d3_to_7`, `d7_to_14`, `over_14d`), distinct players on either side of the `over_14d` matches, and `over_14d_share` of all active matches. `over_14d` is what the 14-day forfeit in `docs/turn-expiry.md` would settle on first read if enabled today; use it to choose between a grace start and a clock reset. Counts only. | `cinq_matches` |
 
 ## Caveats
 
