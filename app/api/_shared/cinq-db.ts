@@ -280,6 +280,24 @@ export async function expireIfOverdue(
   return fresh;
 }
 
+/**
+ * No schema flag for forfeits: a finished match is a forfeit when the winner never guessed the loser's secret.
+ * forfeitedMatchSql below is the same rule for queries; keep the two in step.
+ */
+export function isForfeitedMatch(match: MatchRow, guesses: { player: number; word: string }[]) {
+  const loserSecret = match.winner === 1 ? match.player2_secret : match.player1_secret;
+  return match.status === "finished" && Boolean(match.winner)
+    && !guesses.some((row) => row.player === match.winner && row.word === loserSecret);
+}
+
+/** SQL twin of isForfeitedMatch: 1 when the cinq_matches row aliased `m` is a forfeit, else 0 (also 0 when m is NULL). */
+export function forfeitedMatchSql(m: string) {
+  return `(CASE WHEN ${m}.status = 'finished' AND ${m}.winner IN (1, 2) AND NOT EXISTS (
+    SELECT 1 FROM cinq_guesses g WHERE g.match_code = ${m}.code AND g.player = ${m}.winner
+      AND g.word = CASE ${m}.winner WHEN 1 THEN ${m}.player2_secret ELSE ${m}.player1_secret END
+  ) THEN 1 ELSE 0 END)`;
+}
+
 export function playerRole(match: MatchRow, token: string) {
   if (token === match.player1_token) return 1;
   if (token && token === match.player2_token) return 2;
@@ -310,10 +328,7 @@ export async function publicMatchState(db: D1Database, match: MatchRow, token: s
     : null;
 
   const deadline = turnDeadline(match);
-  // No schema flag for forfeits: a finished match is expired when the winner never guessed the loser's secret.
-  const loserSecret = match.winner === 1 ? match.player2_secret : match.player1_secret;
-  const expired = match.status === "finished" && Boolean(match.winner)
-    && !rows.some((row) => row.player === match.winner && row.word === loserSecret);
+  const expired = isForfeitedMatch(match, rows);
 
   return {
     code: match.code,

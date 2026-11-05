@@ -4,6 +4,8 @@ import { env } from 'cloudflare:workers';
 import * as daily from '../app/api/daily-stats/route.ts';
 import * as playerStats from '../app/api/player-stats/route.ts';
 import { createFakeDb } from './support/fake-d1.mjs';
+import { createFakeD1 } from './helpers/fakeD1.mjs';
+import { ensureCinqSchema, turnExpiry } from '../app/api/_shared/cinq-db.ts';
 
 const KEY = 'abcdefgh12345678'; // 16 chars, the minimum accepted by daily-stats
 const DATE = '2026-10-07';
@@ -226,4 +228,95 @@ test('player-stats GET with only a loss has no best game and zero streak', async
   assert.equal(body.bestGame, null);
   assert.equal(body.currentStreak, 0);
   assert.equal(body.winRate, 0);
+});
+
+// --- player-stats with turn expiry (real SQL over node:sqlite) ---
+
+const NOW = Date.now();
+const DAY = 24 * 60 * 60 * 1000;
+const iso = (ms) => new Date(ms).toISOString();
+const ME = 'player-me-0001';
+
+async function seedExpiry() {
+  const db = createFakeD1();
+  await ensureCinqSchema(db);
+  env.DB = db;
+  const match = (code, status, winner, updatedAt, turn = 1) => db.sqlite.prepare(`INSERT INTO cinq_matches
+    (code, status, player1_token, player2_token, player1_name, player2_name, player1_key, player2_key,
+     player1_secret, player2_secret, current_turn, winner, created_at, updated_at)
+    VALUES (?, ?, 't1', 't2', 'Me', 'Opp', ?, 'player-opp-0002', 'CRANE', 'BUILD', ?, ?, ?, ?)`)
+    .run(code, status, ME, turn, winner, iso(NOW - 40 * DAY), updatedAt);
+  const guess = (code, player, word, n) => db.sqlite.prepare(`INSERT INTO cinq_guesses
+    (match_code, player, turn_number, word, match_count, created_at) VALUES (?, ?, ?, ?, 0, 't')`).run(code, player, n, word);
+  const result = (code, key, won, guesses, at) => db.sqlite.prepare(`INSERT INTO cinq_player_results
+    (match_code, player_key, player_name, won, guesses, completed_at) VALUES (?, ?, 'N', ?, ?, ?)`).run(code, key, won, guesses, at);
+  // SOLVED: I solved it in 4 guesses. FORFEIT: opponent timed out; I (the winner) never solved it, 2 guesses.
+  match('SOLVED', 'finished', 1, iso(NOW - 30 * DAY));
+  for (const [i, w] of ['AAAAA', 'BBBBB', 'CCCCC', 'BUILD'].entries()) guess('SOLVED', 1, w, i + 1);
+  result('SOLVED', ME, 1, 4, '2026-10-01');
+  result('SOLVED', 'player-opp-0002', 0, 6, '2026-10-01');
+  match('FORFEIT', 'finished', 1, iso(NOW - 20 * DAY));
+  guess('FORFEIT', 1, 'AAAAA', 1); guess('FORFEIT', 1, 'BBBBB', 2);
+  result('FORFEIT', ME, 1, 2, '2026-10-02');
+  result('FORFEIT', 'player-opp-0002', 0, 1, '2026-10-02');
+  return { db, match, result };
+}
+const stats = async () => (await getPlayer(`playerKey=${ME}`)).json();
+
+test('player-stats flag off: forfeits still count everywhere and the sweep does not run', async () => {
+  const { db, match } = await seedExpiry();
+  match('STALE', 'active', null, iso(NOW - 30 * DAY));
+  const body = await stats();
+  assert.equal(body.gamesPlayed, 2);
+  assert.equal(body.averageGuesses, 3); // (4 + 2) / 2
+  assert.equal(body.bestGame, 2);
+  assert.equal(db.sqlite.prepare("SELECT status FROM cinq_matches WHERE code = 'STALE'").get().status, 'active');
+});
+
+test('player-stats flag on: forfeits are excluded from guess stats but kept in games, wins and streak', async () => {
+  await seedExpiry();
+  turnExpiry.enabled = true;
+  try {
+    const body = await stats();
+    assert.equal(body.gamesPlayed, 2);
+    assert.equal(body.wins, 2);
+    assert.equal(body.winRate, 100);
+    assert.equal(body.currentStreak, 2);
+    assert.equal(body.averageGuesses, 4); // forfeit's 2 guesses ignored
+    assert.equal(body.bestGame, 4);
+    // population = {4, 6}; forfeit rows (2 and 1) dropped -> 4 is at or below 2 of 2 results
+    assert.equal(body.averagePercentile, 100);
+  } finally { turnExpiry.enabled = false; }
+});
+
+test('player-stats flag on: population excludes forfeit rows from percentile', async () => {
+  const { result } = await seedExpiry();
+  turnExpiry.enabled = true;
+  try {
+    // 3 guesses puts my SOLVED game (4) at 2 of 3 non-forfeit results >= 4 only if forfeits are excluded
+    result('SOLVED', 'extra-player-0003', 1, 3, '2026-10-01');
+    const body = await stats();
+    assert.equal(body.averagePercentile, 67); // {4, 6, 3}: 2 of 3 >= 4 (forfeit 2 and 1 ignored)
+  } finally { turnExpiry.enabled = false; }
+});
+
+test('player-stats flag on: sweeps an overdue match once, leaves a fresh active match alone', async () => {
+  const { db, match } = await seedExpiry();
+  match('STALE', 'active', null, iso(NOW - 15 * DAY), 1); // my turn, overdue -> opponent wins
+  match('FRESH', 'active', null, iso(NOW - 1 * DAY), 1);
+  turnExpiry.enabled = true;
+  try {
+    const first = await stats();
+    assert.equal(first.gamesPlayed, 3);
+    assert.equal(first.wins, 2);
+    assert.equal(first.currentStreak, 0); // the settled loss is the most recent result
+    const stale = db.sqlite.prepare("SELECT status, winner FROM cinq_matches WHERE code = 'STALE'").get();
+    assert.deepEqual({ ...stale }, { status: 'finished', winner: 2 });
+    assert.equal(db.sqlite.prepare("SELECT status FROM cinq_matches WHERE code = 'FRESH'").get().status, 'active');
+    const before = db.sqlite.prepare("SELECT updated_at FROM cinq_matches WHERE code = 'STALE'").get().updated_at;
+    const second = await stats();
+    assert.deepEqual(second, first);
+    assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM cinq_player_results WHERE match_code = 'STALE'").get().n, 2);
+    assert.equal(db.sqlite.prepare("SELECT updated_at FROM cinq_matches WHERE code = 'STALE'").get().updated_at, before);
+  } finally { turnExpiry.enabled = false; }
 });
