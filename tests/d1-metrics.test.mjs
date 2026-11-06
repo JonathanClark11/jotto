@@ -100,3 +100,42 @@ test('turn-expiry-exposure buckets active matches by age and counts only', () =>
   assert.deepEqual(run(), { active_matches: 6, under_3d: 1, d3_to_7: 1, d7_to_14: 1, over_14d: 3, players_in_over_14d: 3, over_14d_share: 0.5 });
   assert.ok(!/player\w*_(key|token|secret)\s*,|\bcode\b/i.test(queries.find((q) => q.id === 'turn-expiry-exposure').sql.split('FROM')[0]), 'no identifying columns selected at top level');
 });
+
+test('cohort-retention and retention-before-after-intro count day 1 and day 7 returns', () => {
+  const db = newDb();
+  const day = (n) => new Date(Date.now() - n * 86400000).toISOString();
+  const d = (n) => day(n).slice(0, 10);
+  const player = db.prepare('INSERT INTO cinq_players (player_key, friend_code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)');
+  const daily = db.prepare('INSERT INTO cinq_daily_results (date, player_key, guesses, completed_at) VALUES (?, ?, ?, ?)');
+  const run = (id) => db.prepare(queries.find((q) => q.id === id).sql).all().map((r) => ({ ...r }));
+  assert.deepEqual(run('cohort-retention'), []);
+  assert.deepEqual(run('retention-before-after-intro'), []);
+  // cohort 10 days ago: x returns on day 1 and 7, y only on day 2, z never. cohort today: w (too young)
+  for (const k of ['x', 'y', 'z']) player.run(k, k.toUpperCase(), k, day(10), day(10));
+  player.run('w', 'W', 'w', day(0), day(0));
+  daily.run(d(9), 'x', 4, day(9));
+  daily.run(d(3), 'x', 4, day(3));
+  daily.run(d(8), 'y', 4, day(8));
+  assert.deepEqual(run('cohort-retention'), [
+    { cohort_day: d(10), cohort_size: 3, d1_active: 1, d1_rate: 0.333, d7_active: 1, d7_rate: 0.333 },
+    { cohort_day: d(0), cohort_size: 1, d1_active: 0, d1_rate: null, d7_active: 0, d7_rate: null },
+  ]);
+  const ba = run('retention-before-after-intro');
+  const total = ba.reduce((n, r) => n + r.players, 0);
+  assert.equal(total, 4);
+  for (const r of ba) assert.ok(['before', 'after'].includes(r.period));
+  const intro = new Date('2026-10-09T00:00:00Z').getTime();
+  const period = Date.now() - 10 * 86400000 < intro ? 'before' : 'after';
+  const row = ba.find((r) => r.period === period);
+  assert.equal(row.d1_eligible, 3);
+  assert.equal(row.d1_active, 1);
+  assert.equal(row.d7_eligible, 3);
+  assert.equal(row.d7_active, 1);
+});
+
+test('retention queries select no identifying columns', () => {
+  for (const id of ['cohort-retention', 'retention-before-after-intro']) {
+    const top = queries.find((q) => q.id === id).sql.split(' FROM ')[0];
+    assert.ok(!/player_key|friend_code|name|token|secret|\bcode\b/i.test(top), id);
+  }
+});
