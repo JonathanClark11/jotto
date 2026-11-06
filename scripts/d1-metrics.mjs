@@ -16,7 +16,7 @@ const ACTIVITY = `SELECT player_key, date(at) AS day FROM (
   UNION ALL SELECT player1_key AS player_key, created_at AS at FROM cinq_matches WHERE player1_key IS NOT NULL
 ) GROUP BY player_key, day`;
 
-// One row per player first seen on or after FROM: first-seen day plus whether they had activity exactly 1 and 7 days later.
+// One row per player first seen on or after the given date: first-seen day plus whether they had activity exactly 1 and 7 days later.
 const firstSeen = (from) => `SELECT p.player_key, date(p.created_at) AS cohort_day, COALESCE(MAX(a.day = date(p.created_at, '+1 day')), 0) AS d1, COALESCE(MAX(a.day = date(p.created_at, '+7 days')), 0) AS d7 FROM cinq_players p LEFT JOIN (${ACTIVITY}) a ON a.player_key = p.player_key WHERE date(p.created_at) >= ${from} GROUP BY p.player_key`;
 const INTRO_SHIP_DAY = "'2026-10-09'";
 
