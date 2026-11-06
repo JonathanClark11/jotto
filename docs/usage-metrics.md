@@ -31,7 +31,17 @@ built from the `cinq-db.ts` DDL.
 | `rematch-rate` | Per creation day: finished matches, how many have a `rematch_code`, and the rate. | `cinq_matches` |
 | `daily-completions` | Daily-puzzle completions per day and average guesses. | `cinq_daily_results` |
 | `returning-7d` | Players active in the last 7 days and how many of them were active on 2 or more distinct days. | `cinq_daily_results`, `cinq_player_results`, `cinq_matches.player1_key` |
+| `cohort-retention` | Per first-seen day: cohort size, day 1 and day 7 active counts and rates. | `cinq_players`, activity (see `returning-7d`) |
+| `retention-before-after-intro` | Players first seen before vs on/after 2026-10-09: players, eligible, active and rate for day 1 and day 7. | `cinq_players`, activity |
 | `turn-expiry-exposure` | One row for `status = 'active'` matches: total, counts aged by `updated_at` (`under_3d`, `d3_to_7`, `d7_to_14`, `over_14d`), distinct players on either side of the `over_14d` matches, and `over_14d_share` of all active matches. `over_14d` is what the 14-day forfeit in `docs/turn-expiry.md` would settle on first read if enabled today; use it to choose between a grace start and a clock reset. Counts only. | `cinq_matches` |
+
+## Retention
+
+`cohort-retention` groups players by first-seen day (`cinq_players.created_at`, last 30 days) and prints cohort size,
+how many had activity exactly 1 day and exactly 7 days later, and the rates. Rates are empty until that day has passed.
+`retention-before-after-intro` splits all players at 2026-10-09 (the `jotto-ftue-intro` ship date) and only counts
+players old enough for each horizon (`d1_eligible`, `d7_eligible`). Small cohorts are noisy; read `cohort_size` first.
+Readout for the intro experiment can use this once about 2 weeks of data exist.
 
 ## Caveats
 

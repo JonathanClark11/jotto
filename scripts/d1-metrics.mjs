@@ -16,6 +16,10 @@ const ACTIVITY = `SELECT player_key, date(at) AS day FROM (
   UNION ALL SELECT player1_key AS player_key, created_at AS at FROM cinq_matches WHERE player1_key IS NOT NULL
 ) GROUP BY player_key, day`;
 
+// One row per player first seen on or after FROM: first-seen day plus whether they had activity exactly 1 and 7 days later.
+const firstSeen = (from) => `SELECT p.player_key, date(p.created_at) AS cohort_day, COALESCE(MAX(a.day = date(p.created_at, '+1 day')), 0) AS d1, COALESCE(MAX(a.day = date(p.created_at, '+7 days')), 0) AS d7 FROM cinq_players p LEFT JOIN (${ACTIVITY}) a ON a.player_key = p.player_key WHERE date(p.created_at) >= ${from} GROUP BY p.player_key`;
+const INTRO_SHIP_DAY = "'2026-10-09'";
+
 export const queries = [
   {
     id: 'new-players',
@@ -51,6 +55,16 @@ export const queries = [
     id: 'returning-7d',
     title: '7-day returning players: active on 2+ distinct days in the last 7 days',
     sql: `SELECT COUNT(*) AS active_players, SUM(CASE WHEN days >= 2 THEN 1 ELSE 0 END) AS returning_players FROM (SELECT player_key, COUNT(*) AS days FROM (${ACTIVITY}) WHERE day >= date('now', '-6 days') GROUP BY player_key)`,
+  },
+  {
+    id: 'cohort-retention',
+    title: 'Cohort retention by first-seen day (last 30 days): size, active on day 1 / day 7 after first seen, rates (NULL until the day has passed)',
+    sql: `SELECT cohort_day, COUNT(*) AS cohort_size, SUM(d1) AS d1_active, CASE WHEN cohort_day <= date('now', '-1 day') THEN ROUND(1.0 * SUM(d1) / COUNT(*), 3) END AS d1_rate, SUM(d7) AS d7_active, CASE WHEN cohort_day <= date('now', '-7 days') THEN ROUND(1.0 * SUM(d7) / COUNT(*), 3) END AS d7_rate FROM (${firstSeen(WINDOW)}) GROUP BY cohort_day ORDER BY cohort_day`,
+  },
+  {
+    id: 'retention-before-after-intro',
+    title: 'Retention for players first seen before vs on/after the jotto-ftue-intro ship date (2026-10-09); only players old enough for each day count',
+    sql: `SELECT CASE WHEN cohort_day < ${INTRO_SHIP_DAY} THEN 'before' ELSE 'after' END AS period, COUNT(*) AS players, SUM(CASE WHEN cohort_day <= date('now', '-1 day') THEN 1 ELSE 0 END) AS d1_eligible, SUM(CASE WHEN cohort_day <= date('now', '-1 day') THEN d1 ELSE 0 END) AS d1_active, ROUND(1.0 * SUM(CASE WHEN cohort_day <= date('now', '-1 day') THEN d1 ELSE 0 END) / NULLIF(SUM(CASE WHEN cohort_day <= date('now', '-1 day') THEN 1 ELSE 0 END), 0), 3) AS d1_rate, SUM(CASE WHEN cohort_day <= date('now', '-7 days') THEN 1 ELSE 0 END) AS d7_eligible, SUM(CASE WHEN cohort_day <= date('now', '-7 days') THEN d7 ELSE 0 END) AS d7_active, ROUND(1.0 * SUM(CASE WHEN cohort_day <= date('now', '-7 days') THEN d7 ELSE 0 END) / NULLIF(SUM(CASE WHEN cohort_day <= date('now', '-7 days') THEN 1 ELSE 0 END), 0), 3) AS d7_rate FROM (${firstSeen("'0000-01-01'")}) GROUP BY period ORDER BY period DESC`,
   },
   {
     id: 'turn-expiry-exposure',
