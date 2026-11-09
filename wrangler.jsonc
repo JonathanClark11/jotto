@@ -2,5 +2,12 @@
   "name": "cinq",
   "main": "worker/index.ts",
   "compatibility_date": "2025-01-01",
-  "account_id": "1d4c314a24109bbdc74dd28ff3740cda"
+  "account_id": "1d4c314a24109bbdc74dd28ff3740cda",
+  // Required by `wrangler preview` (Workers Builds non-production deploys, wrangler >= 4.152). Previews keep using the same D1
+  // database they used before this was required; point database_id at a separate preview database to isolate them.
+  "previews": {
+    "d1_databases": [
+      { "binding": "DB", "database_id": "2eddd625-7a7a-41e6-8748-f7836fff3d09" }
+    ]
+  }
 }
